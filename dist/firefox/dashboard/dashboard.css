@@ -535,9 +535,12 @@ h2 {
 }
 
 .danger-trigger,
+.danger-add-button,
+.danger-manual-toggle,
 .danger-remove-button,
 .danger-close,
-.danger-input {
+.danger-input,
+.danger-select {
   font: inherit;
 }
 
@@ -569,6 +572,7 @@ h2 {
 }
 
 .danger-trigger:hover,
+.danger-add-button:hover:not(:disabled),
 .danger-remove-button:hover:not(:disabled),
 .danger-close:hover {
   transform: translateY(-2px);
@@ -597,7 +601,7 @@ h2 {
   position: absolute;
   inset: 50% auto auto 50%;
   width: min(720px, calc(100vw - 32px));
-  max-height: min(82vh, 760px);
+  height: min(82vh, 760px);
   overflow: hidden;
   transform: translate(-50%, -50%);
   padding: 22px;
@@ -609,7 +613,7 @@ h2 {
     linear-gradient(180deg, rgba(18, 18, 18, 0.98), rgba(6, 6, 6, 0.98));
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
   gap: 16px;
   animation: modalRise 220ms cubic-bezier(0.2, 0.9, 0.24, 1) both;
 }
@@ -641,13 +645,98 @@ h2 {
   color: var(--muted);
 }
 
-.danger-lock {
-  padding: 16px;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 224, 141, 0.12);
-  background: rgba(255, 255, 255, 0.03);
+.danger-manual-shell {
   display: grid;
   gap: 10px;
+  min-height: 0;
+}
+
+.danger-lock,
+.danger-manual {
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.danger-lock {
+  padding: 16px;
+  border: 1px solid rgba(255, 224, 141, 0.12);
+  display: grid;
+  gap: 10px;
+}
+
+.danger-manual-toggle {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(255, 224, 141, 0.16);
+  border-radius: 16px;
+  padding: 12px 14px;
+  cursor: pointer;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.danger-manual-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.danger-manual-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  color: #241600;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+  font-size: 20px;
+  line-height: 1;
+}
+
+.danger-manual {
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  padding: 0 16px;
+  border: 1px solid rgba(255, 224, 141, 0);
+  transition:
+    max-height 260ms cubic-bezier(0.2, 0.9, 0.24, 1),
+    opacity 180ms ease,
+    transform 220ms ease,
+    padding 220ms ease,
+    border-color 220ms ease;
+}
+
+.danger-manual.is-open {
+  max-height: 420px;
+  opacity: 1;
+  transform: translateY(0);
+  padding: 16px;
+  border-color: rgba(255, 224, 141, 0.12);
+}
+
+.danger-manual-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.danger-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.danger-field-wide {
+  grid-column: 1 / -1;
 }
 
 .danger-label code {
@@ -657,7 +746,8 @@ h2 {
   background: linear-gradient(90deg, var(--gold), var(--gold-bright));
 }
 
-.danger-input {
+.danger-input,
+.danger-select {
   width: 100%;
   appearance: none;
   border-radius: 16px;
@@ -668,9 +758,31 @@ h2 {
   outline: none;
 }
 
-.danger-input:focus {
+.danger-input:focus,
+.danger-select:focus {
   border-color: rgba(255, 224, 141, 0.42);
   box-shadow: 0 0 0 3px rgba(255, 224, 141, 0.08);
+}
+
+.danger-select {
+  cursor: pointer;
+}
+
+.danger-add-button {
+  appearance: none;
+  justify-self: start;
+  border-radius: 999px;
+  border: 0;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: #241600;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.danger-add-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .danger-feedback {
@@ -689,6 +801,8 @@ h2 {
 .danger-event-list {
   min-height: 0;
   overflow: auto;
+  align-content: start;
+  overscroll-behavior: contain;
   display: grid;
   gap: 10px;
   padding-right: 4px;
@@ -1156,13 +1270,26 @@ h2 {
     padding: 18px;
   }
 
+  .danger-dialog {
+    height: min(86vh, 760px);
+  }
+
   .danger-event-card {
     grid-template-columns: 1fr;
     justify-items: stretch;
   }
 
+  .danger-manual-grid {
+    grid-template-columns: 1fr;
+  }
+
   .danger-remove-button {
     width: 100%;
+  }
+
+  .danger-add-button {
+    width: 100%;
+    justify-self: stretch;
   }
 }
 

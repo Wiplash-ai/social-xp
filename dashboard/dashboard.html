@@ -177,6 +177,65 @@
           />
         </div>
 
+        <section class="danger-manual-shell">
+          <button
+            id="toggleManualForm"
+            class="danger-manual-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="manualFormPanel"
+          >
+            <span>Add tracked event</span>
+            <span id="manualToggleIcon" class="danger-manual-icon">+</span>
+          </button>
+
+          <div id="manualFormPanel" class="danger-manual" aria-hidden="true">
+            <div class="danger-manual-grid">
+              <label class="danger-field">
+                <span>Network</span>
+                <select id="manualSite" class="danger-select">
+                  <option value="discord">Discord</option>
+                  <option value="x">X</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="threads">Threads</option>
+                  <option value="reddit">Reddit</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="bluesky">Bluesky</option>
+                </select>
+              </label>
+              <label class="danger-field">
+                <span>Action</span>
+                <select id="manualActivityType" class="danger-select">
+                  <option value="post">New post</option>
+                  <option value="reply">Reply / comment</option>
+                </select>
+              </label>
+              <label class="danger-field">
+                <span>Count</span>
+                <select id="manualQuantity" class="danger-select">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                </select>
+              </label>
+              <label class="danger-field danger-field-wide">
+                <span>Where did it land?</span>
+                <input
+                  id="manualContextLabel"
+                  class="danger-input"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="#general / subreddit / feed / community"
+                />
+              </label>
+            </div>
+            <button id="addManualActivity" class="danger-add-button" type="button">Add missed action</button>
+          </div>
+        </section>
+
         <p id="dangerFeedback" class="danger-feedback" aria-live="polite"></p>
 
         <div id="dangerEventList" class="danger-event-list">

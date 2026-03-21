@@ -364,15 +364,6 @@
       window.setTimeout(check, firstDelayMs);
 
       function check() {
-        if (strictConfirmation) {
-          const failure = getDiscordSubmissionFailureText(intent);
-
-          if (failure) {
-            resolve(false);
-            return;
-          }
-        }
-
         const scopeDetached = intent.scopes.some((scope) => scope !== document.body && !document.contains(scope));
         const composerDetached = intent.composer && !document.contains(intent.composer);
         const nextContent = intent.composer && document.contains(intent.composer)
@@ -386,6 +377,15 @@
         if (scopeDetached || composerDetached || contentCleared || contentShrank || discordMessagePublished) {
           resolve(true);
           return;
+        }
+
+        if (strictConfirmation) {
+          const failure = getDiscordSubmissionFailureText(intent);
+
+          if (failure) {
+            resolve(false);
+            return;
+          }
         }
 
         if (Date.now() - startedAt >= maxWaitMs) {
@@ -423,7 +423,13 @@
 
   function getDiscordSubmissionFailureText(intent) {
     const candidates = [
-      ...intent.scopes.slice(0, 4),
+      ...intent.scopes.slice(0, 2).flatMap((scope) => {
+        if (!(scope instanceof Element)) {
+          return [];
+        }
+
+        return [...scope.querySelectorAll("[role='alert'], [aria-live='assertive'], [aria-live='polite']")];
+      }),
       ...document.querySelectorAll("[role='alert'], [aria-live='assertive'], [aria-live='polite']")
     ];
 

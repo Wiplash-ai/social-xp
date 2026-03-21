@@ -11,6 +11,8 @@ let dashboardState = null;
 let selectedTimeframe = "weekly";
 let removalBusyId = "";
 let currentDangerPhrase = "";
+let manualBusy = false;
+let manualFormOpen = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openGoals").addEventListener("click", openGoalsPage);
@@ -21,6 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("dangerPhraseInput").addEventListener("input", renderDangerZone);
   document.getElementById("dangerEventList").addEventListener("click", handleDangerActionClick);
+  document.getElementById("addManualActivity").addEventListener("click", addManualActivity);
+  document.getElementById("toggleManualForm").addEventListener("click", toggleManualForm);
   document.addEventListener("keydown", handleGlobalKeydown);
   refreshDangerPhrase();
 
@@ -324,11 +328,10 @@ function closeDangerZone() {
   document.body.classList.remove("has-modal");
   setDangerFeedback("");
   removalBusyId = "";
-  const input = document.getElementById("dangerPhraseInput");
-
-  if (input) {
-    input.value = "";
-  }
+  manualBusy = false;
+  manualFormOpen = false;
+  clearDangerUnlockInput();
+  syncManualForm();
 }
 
 function renderDangerZone() {
@@ -340,33 +343,66 @@ function renderDangerZone() {
 
   const events = Array.isArray(dashboardState.recentEvents) ? dashboardState.recentEvents : [];
   const unlocked = isDangerUnlocked();
+  const addButton = document.getElementById("addManualActivity");
+  const toggleButton = document.getElementById("toggleManualForm");
+
+  syncManualForm();
+
+  if (toggleButton) {
+    toggleButton.disabled = manualBusy;
+  }
 
   if (events.length === 0) {
     container.innerHTML = `<p class="empty-state">No tracked actions from today.</p>`;
+  } else {
+    container.innerHTML = events.map((event) => {
+      const buttonText = removalBusyId === event.id ? "Removing..." : "Remove";
+      const metaParts = [
+        formatActivityLabel(event.activityType),
+        `${event.xp} XP`
+      ];
+
+      if (event.contextLabel) {
+        metaParts.unshift(event.contextLabel);
+      }
+
+      if (event.source === "manual") {
+        metaParts.push("Manual");
+      }
+
+      return `
+        <article class="danger-event-card">
+          <div class="danger-event-copy">
+            <div class="danger-event-top">
+              <strong>${escapeHtml(event.siteLabel)}</strong>
+              <span>${escapeHtml(formatEventTime(event.timestamp))}</span>
+            </div>
+            <p class="danger-event-meta">${escapeHtml(metaParts.join(" • "))}</p>
+          </div>
+          <button
+            class="danger-remove-button"
+            type="button"
+            data-remove-event="${escapeHtml(event.id)}"
+            ${event.canRemove && unlocked && removalBusyId !== event.id ? "" : "disabled"}
+          >${buttonText}</button>
+        </article>
+      `;
+    }).join("");
+  }
+
+  if (addButton) {
+    addButton.disabled = !unlocked || manualBusy;
+    addButton.textContent = manualBusy ? "Adding..." : "Add missed action";
+  }
+}
+
+function toggleManualForm() {
+  if (manualBusy) {
     return;
   }
 
-  container.innerHTML = events.map((event) => {
-    const buttonText = removalBusyId === event.id ? "Removing..." : "Remove";
-
-    return `
-      <article class="danger-event-card">
-        <div class="danger-event-copy">
-          <div class="danger-event-top">
-            <strong>${escapeHtml(event.siteLabel)}</strong>
-            <span>${escapeHtml(formatEventTime(event.timestamp))}</span>
-          </div>
-          <p class="danger-event-meta">${escapeHtml(formatActivityLabel(event.activityType))} • ${event.xp} XP</p>
-        </div>
-        <button
-          class="danger-remove-button"
-          type="button"
-          data-remove-event="${escapeHtml(event.id)}"
-          ${event.canRemove && unlocked && removalBusyId !== event.id ? "" : "disabled"}
-        >${buttonText}</button>
-      </article>
-    `;
-  }).join("");
+  manualFormOpen = !manualFormOpen;
+  syncManualForm();
 }
 
 function handleDangerActionClick(event) {
@@ -417,6 +453,55 @@ async function removeTrackedEvent(eventId) {
   }
 }
 
+async function addManualActivity() {
+  if (!isDangerUnlocked() || manualBusy) {
+    return;
+  }
+
+  const site = document.getElementById("manualSite").value;
+  const activityType = document.getElementById("manualActivityType").value;
+  const quantity = document.getElementById("manualQuantity").value;
+  const contextLabel = document.getElementById("manualContextLabel").value;
+
+  manualBusy = true;
+  setDangerFeedback("");
+  renderDangerZone();
+
+  try {
+    const response = await sendMessage({
+      type: "ADD_MANUAL_ACTIVITY",
+      payload: {
+        site,
+        activityType,
+        quantity,
+        contextLabel
+      }
+    });
+
+    if (!response || !response.ok) {
+      throw new Error(response && response.error ? response.error : "Unable to add the missed action");
+    }
+
+    dashboardState = response.dashboard;
+    refreshDangerPhrase();
+    clearDangerUnlockInput();
+    manualFormOpen = false;
+    const contextInput = document.getElementById("manualContextLabel");
+
+    if (contextInput) {
+      contextInput.value = "";
+    }
+
+    renderDashboard(dashboardState);
+    setDangerFeedback(`Added ${response.addedCount} missed action${response.addedCount === 1 ? "" : "s"}. Type the new phrase to unlock again.`, "success");
+  } catch (error) {
+    setDangerFeedback(error && error.message ? error.message : "Unable to add the missed action", "error");
+  } finally {
+    manualBusy = false;
+    renderDangerZone();
+  }
+}
+
 function isDangerUnlocked() {
   const input = document.getElementById("dangerPhraseInput");
   return Boolean(input && currentDangerPhrase && input.value.trim() === currentDangerPhrase);
@@ -431,6 +516,33 @@ function setDangerFeedback(message, tone = "") {
 
   element.textContent = message || "";
   element.className = `danger-feedback${tone ? ` is-${tone}` : ""}`;
+}
+
+function clearDangerUnlockInput() {
+  const input = document.getElementById("dangerPhraseInput");
+
+  if (input) {
+    input.value = "";
+  }
+}
+
+function syncManualForm() {
+  const panel = document.getElementById("manualFormPanel");
+  const toggleButton = document.getElementById("toggleManualForm");
+  const toggleIcon = document.getElementById("manualToggleIcon");
+
+  if (panel) {
+    panel.classList.toggle("is-open", manualFormOpen);
+    panel.setAttribute("aria-hidden", manualFormOpen ? "false" : "true");
+  }
+
+  if (toggleButton) {
+    toggleButton.setAttribute("aria-expanded", manualFormOpen ? "true" : "false");
+  }
+
+  if (toggleIcon) {
+    toggleIcon.textContent = manualFormOpen ? "−" : "+";
+  }
 }
 
 function formatEventTime(timestamp) {

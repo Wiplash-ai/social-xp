@@ -53,6 +53,15 @@ const LEGACY_DEFAULT_GOALS = Object.freeze({
 const DEFAULT_SETTINGS = Object.freeze({
   toastEnabled: true
 });
+const SITE_LABELS = Object.freeze({
+  x: "X",
+  linkedin: "LinkedIn",
+  threads: "Threads",
+  discord: "Discord",
+  reddit: "Reddit",
+  facebook: "Facebook",
+  bluesky: "Bluesky"
+});
 
 const PERIODS = Object.freeze(["daily", "weekly", "monthly", "yearly"]);
 const EXTENSION_PAGES = Object.freeze({
@@ -106,6 +115,8 @@ async function handleMessage(message) {
       return getDashboardData();
     case "SAVE_GOALS":
       return saveGoals(message.payload || {});
+    case "ADD_MANUAL_ACTIVITY":
+      return addManualActivity(message.payload || {});
     case "REMOVE_ACTIVITY_EVENT":
       return removeActivityEvent(message.payload || {});
     case "CLEAR_ACTIVITY":
@@ -288,6 +299,56 @@ async function saveGoals(payload) {
       normalizeRewardEvents(stored[STORAGE_KEYS.rewards]),
       Date.now()
     )
+  };
+}
+
+async function addManualActivity(payload) {
+  const site = normalizeSupportedSite(payload.site);
+  const activityType = payload.activityType === "reply" ? "reply" : "post";
+  const quantity = clamp(toGoalNumber(payload.quantity, 1), 1, 10);
+  const contextLabel = sanitizeContextLabel(payload.contextLabel);
+  const now = Date.now();
+
+  if (!site) {
+    return { ok: false, error: "Choose a supported network" };
+  }
+
+  const stored = await storageGet({
+    [STORAGE_KEYS.events]: [],
+    [STORAGE_KEYS.rewards]: [],
+    [STORAGE_KEYS.goals]: cloneGoals(DEFAULT_GOALS)
+  });
+
+  const existingEvents = normalizeEvents(stored[STORAGE_KEYS.events]);
+  const existingRewards = pruneRewardEvents(normalizeRewardEvents(stored[STORAGE_KEYS.rewards]), now);
+  const goals = isValidGoals(stored[STORAGE_KEYS.goals]) ? stored[STORAGE_KEYS.goals] : cloneGoals(DEFAULT_GOALS);
+  const addedEvents = Array.from({ length: quantity }, (_, index) => {
+    const timestamp = now + index;
+
+    return {
+      id: crypto.randomUUID(),
+      site,
+      siteLabel: SITE_LABELS[site],
+      activityType,
+      source: "manual",
+      contextLabel,
+      fingerprint: `manual-${site}-${activityType}-${crypto.randomUUID()}`,
+      xp: XP_VALUES[activityType],
+      timestamp
+    };
+  });
+  const nextEvents = pruneEvents([...existingEvents, ...addedEvents], now + quantity);
+  const nextRewards = updateRewardEvents(nextEvents, existingRewards, goals, now + quantity);
+
+  await storageSet({
+    [STORAGE_KEYS.events]: nextEvents,
+    [STORAGE_KEYS.rewards]: nextRewards
+  });
+
+  return {
+    ok: true,
+    addedCount: quantity,
+    dashboard: buildDashboard(nextEvents, goals, nextRewards, now + quantity)
   };
 }
 
@@ -534,6 +595,7 @@ function buildRecentEvents(events, now) {
         activityType: event.activityType,
         xp: Number(event.xp) || 0,
         source: event.source,
+        contextLabel: sanitizeContextLabel(event.contextLabel),
         timestamp: event.timestamp,
         canRemove: isEventRemovable(event, now)
       };
@@ -1171,6 +1233,23 @@ function normalizeFingerprint(value) {
   }
 
   return value.trim().slice(0, 180);
+}
+
+function normalizeSupportedSite(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(SITE_LABELS, normalized) ? normalized : "";
+}
+
+function sanitizeContextLabel(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().replace(/\s+/g, " ").slice(0, 80);
 }
 
 function isEventRemovable(event, now) {
