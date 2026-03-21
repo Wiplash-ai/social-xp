@@ -140,11 +140,50 @@
                 <strong id="allTimeXp">0</strong>
                 <p id="nextLevelMeta">0 XP to level 2</p>
               </article>
+              <button id="openDangerZone" class="danger-trigger" type="button">Correction Vault</button>
             </div>
           </section>
         </aside>
       </section>
     </main>
+
+    <div id="dangerModal" class="danger-modal" hidden>
+      <div class="danger-backdrop" data-close-danger></div>
+      <section class="danger-dialog" role="dialog" aria-modal="true" aria-labelledby="dangerTitle">
+        <div class="danger-header">
+          <div>
+            <p class="eyebrow">Danger Zone</p>
+            <h2 id="dangerTitle">Remove tracked actions</h2>
+          </div>
+          <button id="closeDangerZone" class="danger-close" type="button" aria-label="Close correction vault">×</button>
+        </div>
+
+        <p class="danger-copy">
+          Only today&apos;s tracked actions appear here. Removing one recalculates current XP, bonuses, streak pressure,
+          and can lower your level.
+        </p>
+
+        <div class="danger-lock">
+          <label class="danger-label" for="dangerPhraseInput">
+            Type <code id="dangerPhraseCode"></code> to unlock removal.
+          </label>
+          <input
+            id="dangerPhraseInput"
+            class="danger-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Type the unlock phrase exactly"
+          />
+        </div>
+
+        <p id="dangerFeedback" class="danger-feedback" aria-live="polite"></p>
+
+        <div id="dangerEventList" class="danger-event-list">
+          <p class="empty-state">No tracked actions from today.</p>
+        </div>
+      </section>
+    </div>
 
     <script src="dashboard.js" defer></script>
   </body>

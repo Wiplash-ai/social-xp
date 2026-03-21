@@ -81,7 +81,8 @@ globalThis.__testExports = {
   getLevelRequirement,
   calculateLevel,
   deriveRewardEvents,
-  updateRewardEvents
+  updateRewardEvents,
+  replaceCurrentRewardEvents
 };
 `).runInContext(context);
 
@@ -188,4 +189,17 @@ test("stored reward events are not rewritten when goals change later", () => {
 
   assert.ok(updatedDailyGoalReward);
   assert.equal(updatedDailyGoalReward.xp, existingDailyGoalReward.xp);
+});
+
+test("removing a same-day action also removes current goal rewards that no longer qualify", () => {
+  const now = new Date(2026, 2, 22, 18, 0, 0, 0).getTime();
+  const events = createDailyGoalEvents(0);
+  const rewards = api.deriveRewardEvents(events, api.DEFAULT_GOALS);
+  const filteredEvents = events.filter((event) => !(event.activityType === "reply" && event.id === "reply-0-8"));
+  const nextRewards = api.replaceCurrentRewardEvents(filteredEvents, rewards, api.DEFAULT_GOALS, now);
+
+  assert.equal(
+    countRewards(nextRewards, "goal", "daily"),
+    0
+  );
 });

@@ -7,12 +7,22 @@ const TIMEFRAME_LABELS = {
   monthly: "Monthly",
   yearly: "Yearly"
 };
-
 let dashboardState = null;
 let selectedTimeframe = "weekly";
+let removalBusyId = "";
+let currentDangerPhrase = "";
 
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openGoals").addEventListener("click", openGoalsPage);
+  document.getElementById("openDangerZone").addEventListener("click", openDangerZone);
+  document.getElementById("closeDangerZone").addEventListener("click", closeDangerZone);
+  document.querySelectorAll("[data-close-danger]").forEach((element) => {
+    element.addEventListener("click", closeDangerZone);
+  });
+  document.getElementById("dangerPhraseInput").addEventListener("input", renderDangerZone);
+  document.getElementById("dangerEventList").addEventListener("click", handleDangerActionClick);
+  document.addEventListener("keydown", handleGlobalKeydown);
+  refreshDangerPhrase();
 
   document.querySelectorAll("[data-timeframe]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -90,6 +100,7 @@ function renderDashboard(dashboard) {
   renderTrendChart(analytics);
   renderMixChart(summary);
   renderSiteGrid(analytics.siteBreakdown);
+  renderDangerZone();
 }
 
 function renderTrendChart(analytics) {
@@ -268,8 +279,14 @@ function handleStorageChange(changes, areaName) {
     return;
   }
 
-  if (changes.socialXpEvents || changes.socialXpGoals) {
+  if (changes.socialXpEvents || changes.socialXpGoals || changes.socialXpRewardEvents) {
     refreshDashboard();
+  }
+}
+
+function handleGlobalKeydown(event) {
+  if (event.key === "Escape") {
+    closeDangerZone();
   }
 }
 
@@ -280,6 +297,212 @@ function openGoalsPage() {
 function renderError(error) {
   setText("selectedSummary", "Dashboard unavailable");
   setText("trendMeta", error && error.message ? error.message : "Unable to load Social-XP");
+}
+
+function openDangerZone() {
+  const modal = document.getElementById("dangerModal");
+
+  if (!modal) {
+    return;
+  }
+
+  refreshDangerPhrase();
+  modal.hidden = false;
+  document.body.classList.add("has-modal");
+  renderDangerZone();
+  document.getElementById("dangerPhraseInput").focus();
+}
+
+function closeDangerZone() {
+  const modal = document.getElementById("dangerModal");
+
+  if (!modal || modal.hidden) {
+    return;
+  }
+
+  modal.hidden = true;
+  document.body.classList.remove("has-modal");
+  setDangerFeedback("");
+  removalBusyId = "";
+  const input = document.getElementById("dangerPhraseInput");
+
+  if (input) {
+    input.value = "";
+  }
+}
+
+function renderDangerZone() {
+  const container = document.getElementById("dangerEventList");
+
+  if (!container || !dashboardState) {
+    return;
+  }
+
+  const events = Array.isArray(dashboardState.recentEvents) ? dashboardState.recentEvents : [];
+  const unlocked = isDangerUnlocked();
+
+  if (events.length === 0) {
+    container.innerHTML = `<p class="empty-state">No tracked actions from today.</p>`;
+    return;
+  }
+
+  container.innerHTML = events.map((event) => {
+    const buttonText = removalBusyId === event.id ? "Removing..." : "Remove";
+
+    return `
+      <article class="danger-event-card">
+        <div class="danger-event-copy">
+          <div class="danger-event-top">
+            <strong>${escapeHtml(event.siteLabel)}</strong>
+            <span>${escapeHtml(formatEventTime(event.timestamp))}</span>
+          </div>
+          <p class="danger-event-meta">${escapeHtml(formatActivityLabel(event.activityType))} • ${event.xp} XP</p>
+        </div>
+        <button
+          class="danger-remove-button"
+          type="button"
+          data-remove-event="${escapeHtml(event.id)}"
+          ${event.canRemove && unlocked && removalBusyId !== event.id ? "" : "disabled"}
+        >${buttonText}</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function handleDangerActionClick(event) {
+  const button = event.target instanceof Element ? event.target.closest("[data-remove-event]") : null;
+
+  if (!button) {
+    return;
+  }
+
+  const eventId = button.getAttribute("data-remove-event");
+
+  if (!eventId || !isDangerUnlocked() || removalBusyId) {
+    return;
+  }
+
+  removeTrackedEvent(eventId);
+}
+
+async function removeTrackedEvent(eventId) {
+  removalBusyId = eventId;
+  setDangerFeedback("");
+  renderDangerZone();
+
+  try {
+    const response = await sendMessage({
+      type: "REMOVE_ACTIVITY_EVENT",
+      payload: { id: eventId }
+    });
+
+    if (!response || !response.ok) {
+      throw new Error(response && response.error ? response.error : "Unable to remove tracked action");
+    }
+
+    dashboardState = response.dashboard;
+    refreshDangerPhrase();
+    const input = document.getElementById("dangerPhraseInput");
+
+    if (input) {
+      input.value = "";
+    }
+    renderDashboard(dashboardState);
+    setDangerFeedback("Tracked action removed. Type the new phrase to unlock another removal.", "success");
+  } catch (error) {
+    setDangerFeedback(error && error.message ? error.message : "Unable to remove tracked action", "error");
+  } finally {
+    removalBusyId = "";
+    renderDangerZone();
+  }
+}
+
+function isDangerUnlocked() {
+  const input = document.getElementById("dangerPhraseInput");
+  return Boolean(input && currentDangerPhrase && input.value.trim() === currentDangerPhrase);
+}
+
+function setDangerFeedback(message, tone = "") {
+  const element = document.getElementById("dangerFeedback");
+
+  if (!element) {
+    return;
+  }
+
+  element.textContent = message || "";
+  element.className = `danger-feedback${tone ? ` is-${tone}` : ""}`;
+}
+
+function formatEventTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function formatActivityLabel(activityType) {
+  return activityType === "reply" ? "Reply / comment" : "New post";
+}
+
+function refreshDangerPhrase() {
+  currentDangerPhrase = createDangerPhrase();
+  const phraseCode = document.getElementById("dangerPhraseCode");
+
+  if (phraseCode) {
+    phraseCode.textContent = currentDangerPhrase;
+  }
+}
+
+function createDangerPhrase() {
+  const left = pickDangerWord([
+    "obsidian",
+    "void",
+    "ember",
+    "rift",
+    "cinder",
+    "onyx",
+    "arcane",
+    "vanta"
+  ]);
+  const middle = pickDangerWord([
+    "lantern",
+    "comet",
+    "cipher",
+    "falcon",
+    "crown",
+    "signal",
+    "anchor",
+    "pylon"
+  ]);
+  const right = pickDangerWord([
+    "cascade",
+    "reversal",
+    "reckoning",
+    "echo",
+    "lockout",
+    "checkpoint",
+    "override",
+    "fallback"
+  ]);
+  const code = String(randomInt(100, 999));
+
+  return `${left}-${middle}-${right}-${code}`;
+}
+
+function pickDangerWord(words) {
+  return words[randomInt(0, words.length - 1)];
+}
+
+function randomInt(min, max) {
+  const range = max - min + 1;
+
+  if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+    const values = new Uint32Array(1);
+    window.crypto.getRandomValues(values);
+    return min + (values[0] % range);
+  }
+
+  return min + Math.floor(Math.random() * range);
 }
 
 function setText(id, value) {

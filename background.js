@@ -61,6 +61,7 @@ const EXTENSION_PAGES = Object.freeze({
 });
 const MAX_EVENT_AGE_DAYS = 365 * 3;
 const DEDUPE_WINDOW_MS = 8000;
+const SAME_DAY_CORRECTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 chrome.runtime.onInstalled.addListener((details) => {
   ensureInitialized().then(() => {
@@ -105,6 +106,8 @@ async function handleMessage(message) {
       return getDashboardData();
     case "SAVE_GOALS":
       return saveGoals(message.payload || {});
+    case "REMOVE_ACTIVITY_EVENT":
+      return removeActivityEvent(message.payload || {});
     case "CLEAR_ACTIVITY":
       return clearActivity();
     case "OPEN_DASHBOARD_PAGE":
@@ -288,6 +291,49 @@ async function saveGoals(payload) {
   };
 }
 
+async function removeActivityEvent(payload) {
+  const eventId = typeof payload.id === "string" ? payload.id.trim() : "";
+  const now = Date.now();
+
+  if (!eventId) {
+    return { ok: false, error: "Missing tracked action id" };
+  }
+
+  const stored = await storageGet({
+    [STORAGE_KEYS.events]: [],
+    [STORAGE_KEYS.rewards]: [],
+    [STORAGE_KEYS.goals]: cloneGoals(DEFAULT_GOALS),
+    [STORAGE_KEYS.settings]: { ...DEFAULT_SETTINGS }
+  });
+
+  const events = normalizeEvents(stored[STORAGE_KEYS.events]);
+  const rewards = pruneRewardEvents(normalizeRewardEvents(stored[STORAGE_KEYS.rewards]), now);
+  const goals = isValidGoals(stored[STORAGE_KEYS.goals]) ? stored[STORAGE_KEYS.goals] : cloneGoals(DEFAULT_GOALS);
+  const target = events.find((event) => event.id === eventId);
+
+  if (!target) {
+    return { ok: false, error: "Tracked action not found" };
+  }
+
+  if (!isEventRemovable(target, now)) {
+    return { ok: false, error: "Only today's tracked actions can be removed" };
+  }
+
+  const nextEvents = events.filter((event) => event.id !== eventId);
+  const nextRewards = replaceCurrentRewardEvents(nextEvents, rewards, goals, now);
+
+  await storageSet({
+    [STORAGE_KEYS.events]: nextEvents,
+    [STORAGE_KEYS.rewards]: nextRewards
+  });
+
+  return {
+    ok: true,
+    removedEvent: target,
+    dashboard: buildDashboard(nextEvents, goals, nextRewards, now)
+  };
+}
+
 async function clearActivity() {
   await storageSet({
     [STORAGE_KEYS.events]: [],
@@ -378,6 +424,7 @@ function buildDashboard(events, goals, rewardEvents = [], now) {
     goals,
     streakDays: calculateStreak(events, now),
     siteBreakdown: buildSiteBreakdown(dailyEvents),
+    recentEvents: buildRecentEvents(events, now),
     allTime,
     level: calculateLevel(allTime.xp),
     analytics: buildAnalytics(events, rewardEvents, now),
@@ -470,6 +517,27 @@ function buildSiteBreakdown(events) {
   });
 
   return [...bySite.values()].sort((left, right) => right.xp - left.xp);
+}
+
+function buildRecentEvents(events, now) {
+  const dayStart = toDayStart(now);
+
+  return [...events]
+    .filter((event) => event.timestamp >= dayStart)
+    .sort((left, right) => right.timestamp - left.timestamp)
+    .slice(0, 12)
+    .map((event) => {
+      return {
+        id: event.id,
+        site: event.site,
+        siteLabel: event.siteLabel,
+        activityType: event.activityType,
+        xp: Number(event.xp) || 0,
+        source: event.source,
+        timestamp: event.timestamp,
+        canRemove: isEventRemovable(event, now)
+      };
+    });
 }
 
 function calculateLevel(totalXp) {
@@ -631,6 +699,39 @@ function updateRewardEvents(events, existingRewards, goals, now) {
   });
 
   return nextRewards.sort((left, right) => left.timestamp - right.timestamp);
+}
+
+function replaceCurrentRewardEvents(events, existingRewards, goals, now) {
+  const currentRewardIds = new Set(getCurrentRewardEventIds(now));
+  const nextRewards = pruneRewardEvents(normalizeRewardEvents(existingRewards), now)
+    .filter((event) => !currentRewardIds.has(event.id));
+  const rewardIds = new Set(nextRewards.map((event) => event.id));
+  const currentRewards = deriveCurrentRewardEvents(events, goals, now);
+
+  currentRewards.forEach((event) => {
+    if (!rewardIds.has(event.id)) {
+      rewardIds.add(event.id);
+      nextRewards.push(event);
+    }
+  });
+
+  return nextRewards.sort((left, right) => left.timestamp - right.timestamp);
+}
+
+function getCurrentRewardEventIds(now) {
+  const ids = [
+    `goal-daily-${toDayKey(now)}`,
+    `streak-daily-${toDayKey(now)}`,
+    `goal-weekly-${toWeekKey(now)}`,
+    `goal-monthly-${toMonthKey(now)}`,
+    `goal-yearly-${toYearKey(now)}`
+  ];
+
+  XP_BONUSES.overgoal.forEach((threshold) => {
+    ids.push(`overgoal-daily-${toDayKey(now)}-${threshold.key}`);
+  });
+
+  return ids;
 }
 
 function finalizeRewardEvents(groups, goals) {
@@ -1070,6 +1171,14 @@ function normalizeFingerprint(value) {
   }
 
   return value.trim().slice(0, 180);
+}
+
+function isEventRemovable(event, now) {
+  if (!event || typeof event.timestamp !== "number") {
+    return false;
+  }
+
+  return event.timestamp >= toDayStart(now) && now - event.timestamp <= SAME_DAY_CORRECTION_WINDOW_MS;
 }
 
 function toDayKey(timestamp) {

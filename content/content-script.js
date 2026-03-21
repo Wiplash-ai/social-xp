@@ -79,6 +79,17 @@
       replyContextPatterns: ["reply"]
     }
   ];
+  const DISCORD_FAILURE_PATTERNS = [
+    "slowmode is enabled",
+    "you are sending messages too quickly",
+    "wait to send another message",
+    "wait a few seconds before trying again",
+    "must wait",
+    "message failed to send",
+    "could not be delivered",
+    "this message failed to send",
+    "one message per"
+  ];
 
   const activeSite = getActiveSite();
   const queuedFingerprints = new Map();
@@ -343,14 +354,25 @@
   }
 
   function waitForSubmissionSignal(intent) {
-    const maxWaitMs = intent.trigger === "enter" ? 1800 : 2200;
+    const strictConfirmation = activeSite.id === "discord";
+    const maxWaitMs = strictConfirmation ? 5000 : intent.trigger === "enter" ? 1800 : 2200;
     const firstDelayMs = intent.trigger === "enter" ? 220 : 480;
     const startedAt = Date.now();
+    const initialDiscordMessageCount = strictConfirmation ? countDiscordMessageNodes() : 0;
 
     return new Promise((resolve) => {
       window.setTimeout(check, firstDelayMs);
 
       function check() {
+        if (strictConfirmation) {
+          const failure = getDiscordSubmissionFailureText(intent);
+
+          if (failure) {
+            resolve(false);
+            return;
+          }
+        }
+
         const scopeDetached = intent.scopes.some((scope) => scope !== document.body && !document.contains(scope));
         const composerDetached = intent.composer && !document.contains(intent.composer);
         const nextContent = intent.composer && document.contains(intent.composer)
@@ -359,20 +381,65 @@
         const contentCleared = nextContent.length === 0;
         const contentShrank =
           intent.content.length > 0 && nextContent.length <= Math.floor(intent.content.length * 0.2);
+        const discordMessagePublished = strictConfirmation && hasDiscordPublishedMessage(intent, initialDiscordMessageCount);
 
-        if (scopeDetached || composerDetached || contentCleared || contentShrank) {
+        if (scopeDetached || composerDetached || contentCleared || contentShrank || discordMessagePublished) {
           resolve(true);
           return;
         }
 
         if (Date.now() - startedAt >= maxWaitMs) {
-          resolve(intent.trigger === "submit" || intent.trigger === "enter");
+          resolve(!strictConfirmation && (intent.trigger === "submit" || intent.trigger === "enter"));
           return;
         }
 
-        window.setTimeout(check, 250);
+        window.setTimeout(check, strictConfirmation ? 180 : 250);
       }
     });
+  }
+
+  function countDiscordMessageNodes() {
+    return document.querySelectorAll("[data-list-item-id^='chat-messages'], [id^='chat-messages-']").length;
+  }
+
+  function hasDiscordPublishedMessage(intent, initialCount) {
+    const selectors = "[data-list-item-id^='chat-messages'], [id^='chat-messages-']";
+    const nodes = [...document.querySelectorAll(selectors)];
+
+    if (nodes.length <= initialCount) {
+      return false;
+    }
+
+    const needle = normalizeText(intent.content).slice(0, 160);
+
+    if (!needle) {
+      return nodes.length > initialCount;
+    }
+
+    return nodes.slice(Math.max(nodes.length - 6, 0)).some((node) => {
+      return normalizeText(node.textContent).includes(needle);
+    });
+  }
+
+  function getDiscordSubmissionFailureText(intent) {
+    const candidates = [
+      ...intent.scopes.slice(0, 4),
+      ...document.querySelectorAll("[role='alert'], [aria-live='assertive'], [aria-live='polite']")
+    ];
+
+    for (const candidate of candidates) {
+      if (!(candidate instanceof Element)) {
+        continue;
+      }
+
+      const text = normalizeText(candidate.textContent || "");
+
+      if (text && containsAny(text, DISCORD_FAILURE_PATTERNS)) {
+        return text;
+      }
+    }
+
+    return "";
   }
 
   function detectActivityType(label, scopes) {
