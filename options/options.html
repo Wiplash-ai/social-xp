@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social-XP Goals</title>
+    <link rel="icon" href="../assets/icons/icon32.png" type="image/png" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <img class="brand-mark" src="../assets/brand-mark.png" alt="Social-XP" />
+          <div>
+            <p class="eyebrow">Social-XP</p>
+            <h1>Goals</h1>
+          </div>
+        </div>
+        <nav class="view-nav" aria-label="Views">
+          <button id="openDashboard" class="nav-button" type="button">Dashboard</button>
+          <button class="nav-button is-active" type="button">Goals</button>
+        </nav>
+      </header>
+
+      <section class="goals-stage">
+        <aside class="sidebar sidebar-left">
+          <section class="panel sidebar-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Supported Sites</p>
+                <h2>DOM tracking rules</h2>
+              </div>
+            </div>
+
+            <div class="site-list">
+              <article class="site-card">
+                <h3>X / Threads / Bluesky</h3>
+                <p>Tracks composer submits for new posts and reply flows when the surrounding UI indicates a reply context.</p>
+              </article>
+              <article class="site-card">
+                <h3>LinkedIn / Reddit</h3>
+                <p>Tracks published posts plus comment and reply submissions from visible composer forms.</p>
+              </article>
+              <article class="site-card">
+                <h3>Facebook</h3>
+                <p>Tracks new posts plus comment and reply submissions from visible composer flows and page-specific forms.</p>
+              </article>
+              <article class="site-card">
+                <h3>Discord</h3>
+                <p>Tracks sent messages and uses the active reply banner to distinguish replies from regular channel posts.</p>
+              </article>
+            </div>
+
+            <p class="footnote">
+              Tracking is DOM-based and best-effort. If a platform changes its UI labels or composer structure, selectors may need a tune-up.
+            </p>
+          </section>
+        </aside>
+
+        <section class="panel form-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Goal Matrix</p>
+              <h2>Targets by cadence</h2>
+            </div>
+            <p id="saveStatus" class="status-text"></p>
+          </div>
+
+          <form id="goalsForm" class="goal-form">
+            <div class="goal-grid header-row">
+              <span>Period</span>
+              <span>New posts</span>
+              <span>Replies / comments</span>
+              <span>XP target</span>
+            </div>
+
+            <div class="goal-grid">
+              <label for="dailyPost">Daily</label>
+              <input id="dailyPost" name="dailyPost" type="number" min="0" step="1" />
+              <input id="dailyReply" name="dailyReply" type="number" min="0" step="1" />
+              <strong id="dailyXpTarget">0 XP</strong>
+            </div>
+
+            <div class="goal-grid">
+              <label for="weeklyPost">Weekly</label>
+              <input id="weeklyPost" name="weeklyPost" type="number" min="0" step="1" />
+              <input id="weeklyReply" name="weeklyReply" type="number" min="0" step="1" />
+              <strong id="weeklyXpTarget">0 XP</strong>
+            </div>
+
+            <div class="goal-grid">
+              <label for="monthlyPost">Monthly</label>
+              <input id="monthlyPost" name="monthlyPost" type="number" min="0" step="1" />
+              <input id="monthlyReply" name="monthlyReply" type="number" min="0" step="1" />
+              <strong id="monthlyXpTarget">0 XP</strong>
+            </div>
+
+            <div class="goal-grid">
+              <label for="yearlyPost">Yearly</label>
+              <input id="yearlyPost" name="yearlyPost" type="number" min="0" step="1" />
+              <input id="yearlyReply" name="yearlyReply" type="number" min="0" step="1" />
+              <strong id="yearlyXpTarget">0 XP</strong>
+            </div>
+
+            <div class="action-row">
+              <button class="primary-button" type="submit">Save goals</button>
+              <button id="resetData" class="ghost-button" type="button">Reset tracked activity</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="sidebar sidebar-right">
+          <section class="hero-card">
+            <div class="hero-copy">
+              <p class="eyebrow">Focus Setup</p>
+              <h2>Set the targets once, then get back to posting.</h2>
+              <p class="hero-text">
+                Social-XP keeps live progress on the page while you write. This view is only for defining daily, weekly,
+                monthly, and yearly targets.
+              </p>
+            </div>
+
+            <div class="hero-side">
+              <article class="hero-chip">
+                <span class="chip-label">New Post</span>
+                <strong>20 XP</strong>
+                <p>Published post</p>
+              </article>
+              <article class="hero-chip">
+                <span class="chip-label">Reply</span>
+                <strong>8 XP</strong>
+                <p>Comment or reply</p>
+              </article>
+              <article class="hero-chip hero-chip-wide">
+                <span class="chip-label">Bonus XP</span>
+                <strong>Goals + streaks + overgoal</strong>
+                <p>Daily, weekly, monthly, and yearly clears scale with difficulty. Streaks and overgoal bonuses stack on top.</p>
+              </article>
+            </div>
+
+            <button id="openXpGuide" class="ghost-button xp-guide-trigger" type="button">Leveling &amp; bonus XP</button>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <div id="xpGuideModal" class="modal-shell" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="xpGuideTitle">
+        <button id="closeXpGuide" class="modal-close" type="button" aria-label="Close leveling guide">×</button>
+
+        <div class="modal-copy">
+          <p class="eyebrow">Social-XP Economy</p>
+          <h2 id="xpGuideTitle">How leveling and bonus XP work</h2>
+          <p class="modal-intro">
+            Action XP is fixed, and bonus XP rewards consistency. Changing your goals only changes future goal bonuses, not the XP you already earned.
+          </p>
+        </div>
+
+        <div class="modal-grid">
+          <article class="modal-section">
+            <h3>Core XP</h3>
+            <ul>
+              <li>New post: <strong>20 XP</strong></li>
+              <li>Reply or comment: <strong>8 XP</strong></li>
+            </ul>
+          </article>
+
+          <article class="modal-section">
+            <h3>How to earn more XP</h3>
+            <ul>
+              <li>Post consistently across the week instead of relying on one big day.</li>
+              <li>Replies stack fast, so engagement matters as much as publishing.</li>
+              <li>Hitting your targets and going past them adds extra reward XP.</li>
+            </ul>
+          </article>
+
+          <article class="modal-section modal-section-wide">
+            <h3>Goal bonuses</h3>
+            <p>Clearing your daily, weekly, monthly, and yearly targets gives bonus XP on top of your normal post and reply XP.</p>
+            <p>Setting harder goals can increase those future goal bonuses a bit, so ambitious targets feel more rewarding without breaking the level system.</p>
+          </article>
+
+          <article class="modal-section">
+            <h3>Streak bonus</h3>
+            <ul>
+              <li>3+ day streak: <strong>+5 XP</strong></li>
+              <li>7+ day streak: <strong>+10 XP</strong></li>
+              <li>14+ day streak: <strong>+15 XP</strong></li>
+              <li>30+ day streak: <strong>+20 XP</strong></li>
+            </ul>
+          </article>
+
+          <article class="modal-section">
+            <h3>Overgoal bonus</h3>
+            <ul>
+              <li>125% of daily goal XP: <strong>+10 XP</strong></li>
+              <li>150% of daily goal XP: <strong>+15 XP</strong></li>
+              <li>200% of daily goal XP: <strong>+25 XP</strong></li>
+            </ul>
+          </article>
+
+          <article class="modal-section modal-section-wide">
+            <h3>How leveling feels</h3>
+            <p>Early levels move quickly so progress feels immediate. Higher levels take more consistency, streaks, and goal clears to reach.</p>
+            <p>Your old XP stays locked in, so changing your goals later will not rewrite your past levels.</p>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <script src="options.js" defer></script>
+  </body>
+</html>

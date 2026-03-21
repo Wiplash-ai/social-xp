@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social-XP Dashboard</title>
+    <link rel="icon" href="../assets/icons/icon32.png" type="image/png" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <img class="brand-mark" src="../assets/brand-mark.png" alt="Social-XP" />
+          <div>
+            <p class="eyebrow">Social-XP</p>
+            <h1>Command Deck</h1>
+          </div>
+        </div>
+        <nav class="view-nav" aria-label="Views">
+          <button class="nav-button is-active" type="button">Dashboard</button>
+          <button id="openGoals" class="nav-button" type="button">Goals</button>
+        </nav>
+      </header>
+
+      <section class="dashboard-stage">
+        <aside class="sidebar sidebar-left">
+          <section class="panel mix-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Activity Mix</p>
+                <h2>Posts vs replies</h2>
+              </div>
+            </div>
+
+            <div class="mix-shell">
+              <svg id="mixChart" class="mix-chart" viewBox="0 0 160 160" aria-label="Posts versus replies chart"></svg>
+              <div class="mix-center">
+                <strong id="mixTotal">0</strong>
+                <span>actions</span>
+              </div>
+            </div>
+
+            <div class="mix-details">
+              <div class="mix-legend">
+                <div class="legend-row">
+                  <span class="legend-swatch posts"></span>
+                  <span>Posts</span>
+                  <strong id="legendPosts">0</strong>
+                </div>
+                <div class="legend-row">
+                  <span class="legend-swatch replies"></span>
+                  <span>Replies</span>
+                  <strong id="legendReplies">0</strong>
+                </div>
+              </div>
+
+              <div class="stats-grid">
+                <article class="mini-stat">
+                  <span>Actions</span>
+                  <strong id="statActions">0</strong>
+                </article>
+                <article class="mini-stat">
+                  <span>Posts</span>
+                  <strong id="statPosts">0</strong>
+                </article>
+                <article class="mini-stat">
+                  <span>Replies</span>
+                  <strong id="statReplies">0</strong>
+                </article>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="panel graph-panel">
+          <div class="panel-heading panel-heading-wide">
+            <div>
+              <p class="eyebrow">Trend Graph</p>
+              <h2 id="trendTitle">Weekly XP Flow</h2>
+            </div>
+            <div class="timeframe-picker" role="tablist" aria-label="Timeframes">
+              <button class="timeframe-button" data-timeframe="daily" type="button">Day</button>
+              <button class="timeframe-button is-active" data-timeframe="weekly" type="button">Week</button>
+              <button class="timeframe-button" data-timeframe="monthly" type="button">Month</button>
+              <button class="timeframe-button" data-timeframe="yearly" type="button">Year</button>
+            </div>
+          </div>
+
+          <p id="trendMeta" class="panel-meta">0 XP tracked in the current weekly window.</p>
+
+          <div class="chart-stage">
+            <svg id="trendChart" class="trend-chart" viewBox="0 0 720 280" aria-label="XP trend chart"></svg>
+          </div>
+
+          <div class="network-strip">
+            <div class="panel-heading network-heading">
+              <div>
+                <p class="eyebrow">Network Pulse</p>
+                <h2>Where the XP landed</h2>
+              </div>
+            </div>
+
+            <div id="siteGrid" class="site-grid-panel">
+              <p class="empty-state">No tracked activity in this window yet.</p>
+            </div>
+          </div>
+        </section>
+
+        <aside class="sidebar sidebar-right">
+          <section class="hero-card">
+            <div class="hero-copy">
+              <p class="eyebrow">Selected Window</p>
+              <h2 id="selectedTimeframeLabel" class="hero-label">Weekly Focus</h2>
+              <p id="selectedXp" class="hero-value">0 XP</p>
+              <p id="selectedSummary" class="hero-summary">0 actions • 0 posts • 0 replies</p>
+
+              <div class="goal-stack">
+                <div class="goal-row">
+                  <span>Goal progress</span>
+                  <strong id="selectedGoalLabel">0 / 0 XP</strong>
+                </div>
+                <div class="xp-bar">
+                  <div id="selectedGoalFill" class="xp-fill"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-side">
+              <article class="hero-chip">
+                <span class="chip-label">Level</span>
+                <strong id="levelValue">1</strong>
+              </article>
+              <article class="hero-chip">
+                <span class="chip-label">Streak</span>
+                <strong id="streakCount">0d</strong>
+              </article>
+              <article class="hero-chip hero-chip-wide">
+                <span class="chip-label">All-time XP</span>
+                <strong id="allTimeXp">0</strong>
+                <p id="nextLevelMeta">0 XP to level 2</p>
+              </article>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script src="dashboard.js" defer></script>
+  </body>
+</html>

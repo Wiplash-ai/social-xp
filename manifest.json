@@ -1,0 +1,87 @@
+{
+  "manifest_version": 3,
+  "name": "Social-XP",
+  "version": "0.1.0",
+  "description": "Track your posting and reply cadence across major social platforms with XP-style progress.",
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
+    "https://www.threads.net/*",
+    "https://threads.net/*",
+    "https://discord.com/*",
+    "https://discordapp.com/*",
+    "https://www.reddit.com/*",
+    "https://reddit.com/*",
+    "https://facebook.com/*",
+    "https://*.facebook.com/*",
+    "https://bsky.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Toggle Social-XP Widget",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*",
+        "https://www.threads.net/*",
+        "https://threads.net/*",
+        "https://discord.com/*",
+        "https://discordapp.com/*",
+        "https://www.reddit.com/*",
+        "https://reddit.com/*",
+        "https://facebook.com/*",
+        "https://*.facebook.com/*",
+        "https://bsky.app/*"
+      ],
+      "js": [
+        "content/content-script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/brand-mark.png",
+        "assets/icons/*.png"
+      ],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*",
+        "https://www.threads.net/*",
+        "https://threads.net/*",
+        "https://discord.com/*",
+        "https://discordapp.com/*",
+        "https://www.reddit.com/*",
+        "https://reddit.com/*",
+        "https://facebook.com/*",
+        "https://*.facebook.com/*",
+        "https://bsky.app/*"
+      ]
+    }
+  ]
+}

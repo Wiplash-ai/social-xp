@@ -1,0 +1,9 @@
+{
+  "name": "socialxp-extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build:firefox": "node scripts/build-firefox.mjs"
+  }
+}
