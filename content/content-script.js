@@ -16,7 +16,8 @@
   ].join(", ");
   const STORAGE_KEYS = Object.freeze({
     events: "socialXpEvents",
-    goals: "socialXpGoals"
+    goals: "socialXpGoals",
+    widgetPositions: "socialXpWidgetPositions"
   });
 
   const SITE_CONFIGS = [
@@ -90,6 +91,9 @@
   let widgetRefreshHoldUntil = 0;
   let widgetLevelHighlight = false;
   let widgetLevelHighlightTimer = 0;
+  let widgetPosition = null;
+  let widgetPositionLoaded = false;
+  let widgetDragState = null;
 
   if (!activeSite) {
     return;
@@ -100,6 +104,7 @@
   function init() {
     document.addEventListener("click", handleClick, true);
     document.addEventListener("submit", handleSubmit, true);
+    window.addEventListener("resize", handleWindowResize);
 
     if (activeSite.enableEnterTracking) {
       document.addEventListener("keydown", handleKeydown, true);
@@ -190,6 +195,15 @@
 
       refreshFocusPanel();
     }
+  }
+
+  function handleWindowResize() {
+    if (!widgetVisible || !widgetPosition || !focusPanelHost) {
+      return;
+    }
+
+    widgetPosition = clampWidgetPosition(widgetPosition);
+    applyWidgetPosition();
   }
 
   function handleRuntimeMessage(message, sender, sendResponse) {
@@ -602,6 +616,15 @@
           align-items: center;
           justify-content: space-between;
           gap: 12px;
+        }
+
+        .header {
+          cursor: grab;
+          touch-action: none;
+        }
+
+        .header.is-dragging {
+          cursor: grabbing;
         }
 
         .eyebrow {
@@ -1104,6 +1127,8 @@
     }
     focusPanelRoot.getElementById("closeWidget").addEventListener("click", closeWidget);
     focusPanelRoot.getElementById("toggleView").addEventListener("click", toggleWidgetView);
+    bindWidgetDragging();
+    applyWidgetPosition();
     widgetTransition = "";
   }
 
@@ -1143,6 +1168,7 @@
     `;
 
     focusPanelRoot.getElementById("retryPanel").addEventListener("click", refreshFocusPanel);
+    applyWidgetPosition();
   }
 
   function toggleWidgetView() {
@@ -1175,6 +1201,7 @@
     widgetMode = "summary";
     widgetTransition = "";
     widgetRefreshHoldUntil = 0;
+    await loadWidgetPosition();
     return refreshFocusPanel();
   }
 
@@ -1189,8 +1216,225 @@
       focusPanelHost.remove();
     }
 
+    stopWidgetDrag();
     focusPanelHost = null;
     focusPanelRoot = null;
+  }
+
+  function bindWidgetDragging() {
+    if (!focusPanelRoot) {
+      return;
+    }
+
+    const header = focusPanelRoot.querySelector(".header");
+
+    if (!header) {
+      return;
+    }
+
+    header.addEventListener("pointerdown", startWidgetDrag);
+  }
+
+  function startWidgetDrag(event) {
+    if (event.button !== 0 || !focusPanelHost || !focusPanelRoot) {
+      return;
+    }
+
+    const interactiveTarget = event.target instanceof Element
+      ? event.target.closest("button, a, input, textarea, select, label")
+      : null;
+
+    if (interactiveTarget) {
+      return;
+    }
+
+    const header = focusPanelRoot.querySelector(".header");
+    const rect = focusPanelHost.getBoundingClientRect();
+
+    widgetDragState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originLeft: rect.left,
+      originTop: rect.top
+    };
+
+    focusPanelHost.style.left = `${rect.left}px`;
+    focusPanelHost.style.top = `${rect.top}px`;
+    focusPanelHost.style.right = "auto";
+    focusPanelHost.style.bottom = "auto";
+
+    if (header) {
+      header.classList.add("is-dragging");
+
+      if (typeof header.setPointerCapture === "function") {
+        header.setPointerCapture(event.pointerId);
+      }
+    }
+
+    document.addEventListener("pointermove", moveWidgetDrag, true);
+    document.addEventListener("pointerup", stopWidgetDrag, true);
+    document.addEventListener("pointercancel", stopWidgetDrag, true);
+    event.preventDefault();
+  }
+
+  function moveWidgetDrag(event) {
+    if (!widgetDragState || event.pointerId !== widgetDragState.pointerId) {
+      return;
+    }
+
+    const nextPosition = clampWidgetPosition({
+      left: widgetDragState.originLeft + (event.clientX - widgetDragState.startX),
+      top: widgetDragState.originTop + (event.clientY - widgetDragState.startY)
+    });
+
+    widgetPosition = nextPosition;
+    applyWidgetPosition();
+    event.preventDefault();
+  }
+
+  function stopWidgetDrag(event) {
+    if (widgetDragState && event && event.pointerId !== widgetDragState.pointerId) {
+      return;
+    }
+
+    if (focusPanelRoot) {
+      const header = focusPanelRoot.querySelector(".header");
+
+      if (header) {
+        header.classList.remove("is-dragging");
+
+        if (event && typeof header.releasePointerCapture === "function") {
+          try {
+            header.releasePointerCapture(event.pointerId);
+          } catch (error) {
+            void error;
+          }
+        }
+      }
+    }
+
+    document.removeEventListener("pointermove", moveWidgetDrag, true);
+    document.removeEventListener("pointerup", stopWidgetDrag, true);
+    document.removeEventListener("pointercancel", stopWidgetDrag, true);
+
+    if (widgetDragState && widgetPosition) {
+      saveWidgetPosition(widgetPosition).catch(() => {
+        return undefined;
+      });
+    }
+
+    widgetDragState = null;
+  }
+
+  async function loadWidgetPosition() {
+    if (widgetPositionLoaded) {
+      return widgetPosition;
+    }
+
+    widgetPositionLoaded = true;
+
+    try {
+      const stored = await storageGetLocal({
+        [STORAGE_KEYS.widgetPositions]: {}
+      });
+      const positions = stored && typeof stored[STORAGE_KEYS.widgetPositions] === "object"
+        ? stored[STORAGE_KEYS.widgetPositions]
+        : {};
+
+      widgetPosition = normalizeWidgetPosition(positions[getWidgetPositionKey()]);
+    } catch (error) {
+      widgetPosition = null;
+    }
+
+    return widgetPosition;
+  }
+
+  async function saveWidgetPosition(position) {
+    const normalized = normalizeWidgetPosition(position);
+
+    if (!normalized) {
+      return;
+    }
+
+    widgetPosition = normalized;
+
+    const stored = await storageGetLocal({
+      [STORAGE_KEYS.widgetPositions]: {}
+    });
+    const existing = stored && typeof stored[STORAGE_KEYS.widgetPositions] === "object"
+      ? stored[STORAGE_KEYS.widgetPositions]
+      : {};
+
+    await storageSetLocal({
+      [STORAGE_KEYS.widgetPositions]: {
+        ...existing,
+        [getWidgetPositionKey()]: normalized
+      }
+    });
+  }
+
+  function applyWidgetPosition() {
+    if (!focusPanelHost) {
+      return;
+    }
+
+    if (!widgetPosition) {
+      focusPanelHost.style.top = "18px";
+      focusPanelHost.style.right = "18px";
+      focusPanelHost.style.left = "auto";
+      focusPanelHost.style.bottom = "auto";
+      return;
+    }
+
+    widgetPosition = clampWidgetPosition(widgetPosition);
+    focusPanelHost.style.top = `${widgetPosition.top}px`;
+    focusPanelHost.style.left = `${widgetPosition.left}px`;
+    focusPanelHost.style.right = "auto";
+    focusPanelHost.style.bottom = "auto";
+  }
+
+  function clampWidgetPosition(position) {
+    const normalized = normalizeWidgetPosition(position);
+
+    if (!normalized) {
+      return null;
+    }
+
+    const rect = focusPanelHost ? focusPanelHost.getBoundingClientRect() : null;
+    const width = rect && rect.width ? rect.width : 286;
+    const height = rect && rect.height ? rect.height : 320;
+    const minLeft = 12;
+    const minTop = 12;
+    const maxLeft = Math.max(window.innerWidth - width - minLeft, minLeft);
+    const maxTop = Math.max(window.innerHeight - height - minTop, minTop);
+
+    return {
+      left: Math.round(Math.min(Math.max(normalized.left, minLeft), maxLeft)),
+      top: Math.round(Math.min(Math.max(normalized.top, minTop), maxTop))
+    };
+  }
+
+  function normalizeWidgetPosition(position) {
+    if (!position || typeof position !== "object") {
+      return null;
+    }
+
+    const left = Number(position.left);
+    const top = Number(position.top);
+
+    if (!Number.isFinite(left) || !Number.isFinite(top)) {
+      return null;
+    }
+
+    return {
+      left: Math.round(left),
+      top: Math.round(top)
+    };
+  }
+
+  function getWidgetPositionKey() {
+    return `${activeSite.id}:${window.location.hostname.toLowerCase()}`;
   }
 
   function highlightWidgetLevel() {
@@ -1704,6 +1948,32 @@
         }
 
         resolve(response);
+      });
+    });
+  }
+
+  function storageGetLocal(defaults) {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.get(defaults, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+
+        resolve(result);
+      });
+    });
+  }
+
+  function storageSetLocal(values) {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set(values, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+
+        resolve();
       });
     });
   }
