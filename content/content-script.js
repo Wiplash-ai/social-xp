@@ -87,6 +87,9 @@
   let widgetVisible = false;
   let widgetMode = "summary";
   let widgetTransition = "";
+  let widgetRefreshHoldUntil = 0;
+  let widgetLevelHighlight = false;
+  let widgetLevelHighlightTimer = 0;
 
   if (!activeSite) {
     return;
@@ -181,6 +184,10 @@
     }
 
     if (widgetVisible && (changes[STORAGE_KEYS.events] || changes[STORAGE_KEYS.goals])) {
+      if (Date.now() < widgetRefreshHoldUntil) {
+        return;
+      }
+
       refreshFocusPanel();
     }
   }
@@ -291,11 +298,23 @@
         }
 
         if (widgetVisible && response.dashboard) {
-          renderFocusPanel(response.dashboard);
+          widgetRefreshHoldUntil = Date.now() + (response.levelUp ? 2800 : 900);
+        }
 
-          if (response.levelUp) {
+        if (response.levelUp) {
+          if (widgetVisible) {
+            highlightWidgetLevel();
+
+            if (response.dashboard) {
+              renderFocusPanel(response.dashboard);
+            }
+
             launchWidgetLevelUp(response.levelUp);
+          } else {
+            showLevelUpToast(response.levelUp);
           }
+        } else if (widgetVisible && response.dashboard) {
+          renderFocusPanel(response.dashboard);
         }
 
         if (response.settings && response.settings.toastEnabled === false) {
@@ -521,6 +540,7 @@
       ? "Daily goal clear"
       : `${daily.remaining.post} posts • ${daily.remaining.reply} replies left`;
     const modeStageClass = widgetTransition ? `mode-stage is-transition ${widgetTransition}` : "mode-stage";
+    const levelChipClass = widgetLevelHighlight ? "chip is-level-glow" : "chip";
     const periodRows = ["daily", "weekly", "monthly", "yearly"]
       .map((period) => {
         const summary = dashboard.periods[period];
@@ -715,6 +735,15 @@
           border: 1px solid rgba(255, 228, 144, 0.18);
         }
 
+        .chip.is-level-glow {
+          border-color: rgba(255, 235, 163, 0.56);
+          box-shadow:
+            0 0 0 1px rgba(255, 224, 141, 0.14),
+            0 0 22px rgba(255, 216, 112, 0.18),
+            inset 0 0 24px rgba(255, 228, 144, 0.08);
+          animation: level-chip-pulse 1600ms ease-in-out 2;
+        }
+
         .chip-label {
           color: rgba(255, 233, 184, 0.72);
           font-size: 10px;
@@ -726,6 +755,14 @@
           display: block;
           margin-top: 4px;
           font-size: 24px;
+        }
+
+        .chip-meta {
+          display: block;
+          margin-top: 4px;
+          color: rgba(255, 233, 184, 0.68);
+          font-size: 10px;
+          line-height: 1.3;
         }
 
         .bar-label {
@@ -770,6 +807,28 @@
           margin-top: 14px;
           display: grid;
           gap: 10px;
+        }
+
+        .metric-strip {
+          margin-top: 10px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .metric-pill {
+          min-width: 0;
+          padding: 8px 10px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 222, 132, 0.12);
+          background: rgba(255, 255, 255, 0.03);
+          color: rgba(255, 233, 184, 0.8);
+          font-size: 11px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          text-align: center;
         }
 
         .mode-stage {
@@ -944,6 +1003,21 @@
           }
         }
 
+        @keyframes level-chip-pulse {
+          0%,
+          100% {
+            transform: scale(1);
+          }
+
+          35% {
+            transform: scale(1.05);
+          }
+
+          60% {
+            transform: scale(1.02);
+          }
+        }
+
         @media (max-width: 900px) {
           .shell {
             width: min(92vw, 286px);
@@ -969,9 +1043,10 @@
               <p class="hero-title">${daily.xp} XP</p>
               <p class="hero-sub">${xpGoalLabel}</p>
             </div>
-            <div class="chip">
-              <p class="chip-label">${getInlineIcon("streak")} Streak</p>
-              <strong>${dashboard.streakDays}d</strong>
+            <div class="${levelChipClass}">
+              <p class="chip-label">${getInlineIcon("level")} Level</p>
+              <strong>${dashboard.level.level}</strong>
+              <small class="chip-meta">${dashboard.level.remainingXp} XP to level ${dashboard.level.nextLevel}</small>
             </div>
           </div>
 
@@ -981,6 +1056,11 @@
           </div>
           <div class="xp-bar">
             <div class="xp-fill" style="width: ${daily.progress.xp > 0 ? Math.round(daily.progress.xp * 100) : 0}%"></div>
+          </div>
+
+          <div class="metric-strip">
+            <div class="metric-pill">${getInlineIcon("streak")} ${dashboard.streakDays}d streak</div>
+            <div class="metric-pill">${getInlineIcon("level")} L${dashboard.level.level} • ${dashboard.level.remainingXp} XP left</div>
           </div>
 
           <div class="${modeStageClass}">
@@ -1073,6 +1153,14 @@
 
   function closeWidget() {
     widgetVisible = false;
+    widgetRefreshHoldUntil = 0;
+    widgetLevelHighlight = false;
+
+    if (widgetLevelHighlightTimer) {
+      window.clearTimeout(widgetLevelHighlightTimer);
+      widgetLevelHighlightTimer = 0;
+    }
+
     destroyFocusPanel();
   }
 
@@ -1086,6 +1174,7 @@
 
     widgetMode = "summary";
     widgetTransition = "";
+    widgetRefreshHoldUntil = 0;
     return refreshFocusPanel();
   }
 
@@ -1102,6 +1191,23 @@
 
     focusPanelHost = null;
     focusPanelRoot = null;
+  }
+
+  function highlightWidgetLevel() {
+    widgetLevelHighlight = true;
+
+    if (widgetLevelHighlightTimer) {
+      window.clearTimeout(widgetLevelHighlightTimer);
+    }
+
+    widgetLevelHighlightTimer = window.setTimeout(() => {
+      widgetLevelHighlight = false;
+      widgetLevelHighlightTimer = 0;
+
+      if (widgetVisible && Date.now() >= widgetRefreshHoldUntil) {
+        refreshFocusPanel();
+      }
+    }, 2600);
   }
 
   function launchWidgetLevelUp(levelUp) {
@@ -1124,32 +1230,41 @@
     const overlay = document.createElement("div");
     overlay.id = "socialxp-levelup";
     overlay.style.position = "absolute";
-    overlay.style.inset = "0";
+    overlay.style.inset = "-2px";
     overlay.style.pointerEvents = "none";
     overlay.style.overflow = "hidden";
     overlay.style.zIndex = "3";
     overlay.innerHTML = `
       <div style="
         position:absolute;
+        inset:0;
+        background:
+          radial-gradient(circle at 50% 12%, rgba(255, 236, 180, 0.24), transparent 34%),
+          radial-gradient(circle at 50% 68%, rgba(255, 197, 74, 0.14), transparent 46%);
+        opacity:0;
+        animation:socialxp-level-glow 1800ms ease forwards;
+      "></div>
+      <div style="
+        position:absolute;
         left:50%;
-        top:14px;
+        top:18px;
         transform:translateX(-50%);
-        min-width:152px;
-        padding:9px 12px;
-        border-radius:16px;
-        border:1px solid rgba(255,224,141,0.24);
+        min-width:178px;
+        padding:11px 14px;
+        border-radius:18px;
+        border:1px solid rgba(255,224,141,0.28);
         color:#fff1cf;
         text-align:center;
         background:
-          radial-gradient(circle at top, rgba(255,239,191,0.18), transparent 56%),
+          radial-gradient(circle at top, rgba(255,239,191,0.22), transparent 56%),
           linear-gradient(180deg, rgba(28,22,10,0.96), rgba(8,8,8,0.96));
-        box-shadow:0 16px 34px rgba(0,0,0,0.34);
+        box-shadow:0 20px 42px rgba(0,0,0,0.38), 0 0 24px rgba(255, 219, 121, 0.12);
         animation:socialxp-level-banner 2200ms cubic-bezier(0.2,0.9,0.24,1) forwards;
       ">
         <div style="color:#d5aa44;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;">Level Up</div>
         <div style="
-          margin-top:2px;
-          font-size:24px;
+          margin-top:4px;
+          font-size:28px;
           font-weight:700;
           line-height:1;
           color:transparent;
@@ -1157,19 +1272,39 @@
           -webkit-background-clip:text;
           background-clip:text;
         ">Level ${escapeHtml(String(levelUp.toLevel))}</div>
+        <div style="margin-top:5px;color:rgba(255,241,207,0.74);font-size:11px;">${escapeHtml(String(levelUp.remainingXp))} XP to next level</div>
       </div>
       <div style="position:absolute;inset:0;">
-        ${createWidgetConfettiPieces(22)}
+        ${createWidgetConfettiPieces(40)}
       </div>
       <style>
+        @keyframes socialxp-level-glow {
+          0% {
+            opacity: 0;
+          }
+
+          16%,
+          64% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+          }
+        }
+
         @keyframes socialxp-level-banner {
           0% {
             opacity: 0;
-            transform: translateX(-50%) translateY(-12px) scale(0.88);
+            transform: translateX(-50%) translateY(-16px) scale(0.82);
           }
 
           14% {
             opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1.04);
+          }
+
+          24% {
             transform: translateX(-50%) translateY(0) scale(1);
           }
 
@@ -1203,6 +1338,17 @@
     `;
 
     panel.appendChild(overlay);
+    panel.animate(
+      [
+        { transform: "scale(1)", filter: "brightness(1)" },
+        { transform: "scale(1.016)", filter: "brightness(1.08)" },
+        { transform: "scale(1)", filter: "brightness(1)" }
+      ],
+      {
+        duration: 760,
+        easing: "cubic-bezier(0.2, 0.9, 0.24, 1)"
+      }
+    );
 
     window.setTimeout(() => {
       overlay.remove();
@@ -1244,18 +1390,24 @@
     }).join("");
   }
 
-  function showToast(event, dashboard) {
-    if (!toastRoot) {
-      const host = document.createElement("div");
-      host.id = "socialxp-toast-root";
-      host.style.position = "fixed";
-      host.style.right = "18px";
-      host.style.bottom = "18px";
-      host.style.zIndex = "2147483647";
-      host.style.pointerEvents = "none";
-      document.documentElement.appendChild(host);
-      toastRoot = host.attachShadow({ mode: "open" });
+  function ensureToastRoot() {
+    if (toastRoot) {
+      return;
     }
+
+    const host = document.createElement("div");
+    host.id = "socialxp-toast-root";
+    host.style.position = "fixed";
+    host.style.right = "18px";
+    host.style.bottom = "18px";
+    host.style.zIndex = "2147483647";
+    host.style.pointerEvents = "none";
+    document.documentElement.appendChild(host);
+    toastRoot = host.attachShadow({ mode: "open" });
+  }
+
+  function showToast(event, dashboard) {
+    ensureToastRoot();
 
     const wrapper = document.createElement("div");
     const totalXp = dashboard && dashboard.periods && dashboard.periods.daily ? dashboard.periods.daily.xp : event.xp;
@@ -1354,6 +1506,145 @@
     window.setTimeout(() => {
       wrapper.remove();
     }, 3800);
+  }
+
+  function showLevelUpToast(levelUp) {
+    ensureToastRoot();
+
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = `
+      <style>
+        .level-toast {
+          position: relative;
+          width: 278px;
+          margin-top: 10px;
+          padding: 16px 16px 15px;
+          overflow: hidden;
+          border-radius: 22px;
+          color: #f8ecd2;
+          background:
+            radial-gradient(circle at top, rgba(255, 239, 191, 0.18), transparent 54%),
+            linear-gradient(145deg, rgba(18, 14, 7, 0.98), rgba(29, 20, 8, 0.98));
+          border: 1px solid rgba(255, 208, 95, 0.32);
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.48);
+          backdrop-filter: blur(14px);
+          font: 13px/1.4 "Trebuchet MS", "Gill Sans", sans-serif;
+          animation: level-slide-in 220ms ease-out, level-fade-out 260ms ease-in 3.5s forwards;
+        }
+
+        .level-toast::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 50% 10%, rgba(255, 224, 141, 0.16), transparent 34%);
+          pointer-events: none;
+        }
+
+        .eyebrow {
+          margin: 0 0 4px;
+          color: #d6b35a;
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+
+        .title {
+          margin: 0;
+          font-size: 28px;
+          font-weight: 700;
+          line-height: 1;
+          color: transparent;
+          background: linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+        }
+
+        .sub {
+          margin: 6px 0 0;
+          color: rgba(248, 236, 210, 0.82);
+        }
+
+        .meta {
+          margin-top: 10px;
+          color: rgba(248, 236, 210, 0.74);
+          font-size: 11px;
+        }
+
+        .confetti {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+
+        .piece {
+          position: absolute;
+          top: -14%;
+          left: var(--x);
+          width: var(--size);
+          height: var(--height);
+          border-radius: 999px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.82), var(--confetti));
+          box-shadow: 0 0 10px rgba(255,223,146,0.18);
+          opacity: 0;
+          transform: translate3d(0, 0, 0) rotate(0deg);
+          animation: toast-confetti-fall var(--duration) cubic-bezier(0.18, 0.72, 0.24, 1) forwards;
+          animation-delay: var(--delay);
+        }
+
+        @keyframes level-slide-in {
+          from { transform: translateY(12px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes level-fade-out {
+          to { transform: translateY(8px); opacity: 0; }
+        }
+
+        @keyframes toast-confetti-fall {
+          0% {
+            opacity: 0;
+            transform: translate3d(0, -10%, 0) rotate(0deg);
+          }
+
+          8% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: translate3d(var(--drift), 118%, 0) rotate(var(--rotate));
+          }
+        }
+      </style>
+      <div class="level-toast">
+        <div class="confetti">${createToastConfettiPieces(22)}</div>
+        <p class="eyebrow">Level Up</p>
+        <p class="title">Level ${escapeHtml(String(levelUp.toLevel))}</p>
+        <p class="sub">You crossed into a new level.</p>
+        <p class="meta">${escapeHtml(String(levelUp.remainingXp))} XP to next level</p>
+      </div>
+    `;
+
+    toastRoot.appendChild(wrapper);
+
+    window.setTimeout(() => {
+      wrapper.remove();
+    }, 4000);
+  }
+
+  function createToastConfettiPieces(count) {
+    return Array.from({ length: count }, (_, index) => {
+      const x = 5 + Math.random() * 90;
+      const drift = -48 + Math.random() * 96;
+      const duration = 1100 + Math.random() * 700;
+      const delay = Math.random() * 180;
+      const rotate = 180 + Math.random() * 320;
+      const width = 4 + Math.random() * 4;
+      const height = width * (1.5 + Math.random() * 1.6);
+      const color = ["#ffe7a1", "#d5aa44", "#f0c865", "#fff5cf", "#9c670f"][index % 5];
+
+      return `<span class="piece" style="--x:${x}%;--drift:${drift}px;--duration:${duration}ms;--delay:${delay}ms;--rotate:${rotate}deg;--size:${width}px;--height:${height}px;--confetti:${color};"></span>`;
+    }).join("");
   }
 
   function getActiveSite() {
@@ -1461,6 +1752,11 @@
       streak: `
         <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
           <path d="M13.5 2c.9 3-1.6 4.7-1.6 6.9 0 1.4.9 2.2 2 2.2 1.6 0 2.7-1.5 2.7-3.3 0-.4-.04-.83-.16-1.27C18.5 8.1 21 10.8 21 14.4 21 19 17.4 22 12.7 22 8 22 4 19.1 4 14.7c0-2.8 1.3-5.1 3.3-6.9-.2 3.2 1.7 4.6 3.2 4.6 1.3 0 2.3-.9 2.3-2.3 0-2.1-1.7-3.5.7-8.1Z" fill="currentColor"></path>
+        </svg>
+      `,
+      level: `
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+          <path d="M12 3 14.9 8.9 21.4 9.8 16.7 14.3 17.8 20.8 12 17.7 6.2 20.8 7.3 14.3 2.6 9.8 9.1 8.9 12 3Z" fill="currentColor"></path>
         </svg>
       `,
       target: `
