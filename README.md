@@ -48,6 +48,7 @@ Social-XP tracks your publishing activity across major social platforms and turn
 Bonus systems:
 
 - Streak bonus: `+5 / +10 / +15 / +20 XP` at 3 / 7 / 14 / 30 active days
+- Weekly progress and weekly goal bonuses use a rolling 7-day window
 - Overgoal bonus: `+10 / +15 / +25 XP` at 125% / 150% / 200% of the daily XP target
 - Harder goals can slightly increase future goal-clear bonuses
 

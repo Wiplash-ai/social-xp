@@ -739,38 +739,31 @@ function buildAnalyticsWindow(events, rewardEvents, buckets) {
 function deriveRewardEvents(events, goals) {
   const sortedEvents = [...events].sort((left, right) => left.timestamp - right.timestamp);
   const dayMap = new Map();
-  const weekMap = new Map();
   const monthMap = new Map();
   const yearMap = new Map();
 
   sortedEvents.forEach((event) => {
     const dayKey = toDayKey(event.timestamp);
-    const weekKey = toWeekKey(event.timestamp);
     const monthKey = toMonthKey(event.timestamp);
     const yearKey = toYearKey(event.timestamp);
     const dayStart = toDayStart(event.timestamp);
-    const weekStart = toWeekStart(event.timestamp);
     const monthStart = toMonthStart(event.timestamp);
     const yearStart = toYearStart(event.timestamp);
     const dayGroup = dayMap.get(dayKey) || createRewardBucket(dayKey, dayStart);
-    const weekGroup = weekMap.get(weekKey) || createRewardBucket(weekKey, weekStart);
     const monthGroup = monthMap.get(monthKey) || createRewardBucket(monthKey, monthStart);
     const yearGroup = yearMap.get(yearKey) || createRewardBucket(yearKey, yearStart);
 
     applyEventToRewardBucket(dayGroup, event);
-    applyEventToRewardBucket(weekGroup, event);
     applyEventToRewardBucket(monthGroup, event);
     applyEventToRewardBucket(yearGroup, event);
 
     dayMap.set(dayKey, dayGroup);
-    weekMap.set(weekKey, weekGroup);
     monthMap.set(monthKey, monthGroup);
     yearMap.set(yearKey, yearGroup);
   });
 
   return finalizeRewardEvents({
     dayGroups: [...dayMap.values()].sort((left, right) => left.start - right.start),
-    weekGroups: [...weekMap.values()].sort((left, right) => left.start - right.start),
     monthGroups: [...monthMap.values()].sort((left, right) => left.start - right.start),
     yearGroups: [...yearMap.values()].sort((left, right) => left.start - right.start)
   }, goals);
@@ -782,7 +775,7 @@ function updateRewardEvents(events, existingRewards, goals, now) {
   const currentRewards = deriveCurrentRewardEvents(events, goals, now);
 
   currentRewards.forEach((event) => {
-    if (!rewardIds.has(event.id)) {
+    if (!rewardIds.has(event.id) && canAppendRewardEvent(event, nextRewards)) {
       rewardIds.add(event.id);
       nextRewards.push(event);
     }
@@ -799,7 +792,7 @@ function replaceCurrentRewardEvents(events, existingRewards, goals, now) {
   const currentRewards = deriveCurrentRewardEvents(events, goals, now);
 
   currentRewards.forEach((event) => {
-    if (!rewardIds.has(event.id)) {
+    if (!rewardIds.has(event.id) && canAppendRewardEvent(event, nextRewards)) {
       rewardIds.add(event.id);
       nextRewards.push(event);
     }
@@ -812,7 +805,7 @@ function getCurrentRewardEventIds(now) {
   const ids = [
     `goal-daily-${toDayKey(now)}`,
     `streak-daily-${toDayKey(now)}`,
-    `goal-weekly-${toWeekKey(now)}`,
+    `goal-weekly-${toDayKey(now)}`,
     `goal-monthly-${toMonthKey(now)}`,
     `goal-yearly-${toYearKey(now)}`
   ];
@@ -822,6 +815,19 @@ function getCurrentRewardEventIds(now) {
   });
 
   return ids;
+}
+
+function canAppendRewardEvent(candidate, existingRewards) {
+  if (!candidate || candidate.bonusType !== "goal" || candidate.scope !== "weekly") {
+    return true;
+  }
+
+  const rewards = Array.isArray(existingRewards) ? existingRewards : [];
+  const cooldownStart = toRollingWeekStart(candidate.timestamp);
+
+  return !rewards.some((event) => {
+    return event.bonusType === "goal" && event.scope === "weekly" && event.timestamp >= cooldownStart;
+  });
 }
 
 function finalizeRewardEvents(groups, goals) {
@@ -839,13 +845,7 @@ function finalizeRewardEvents(groups, goals) {
     rewardEvents.push(...getDailyRewardEvents(group, streak, goals.daily, difficultyMultiplier));
   });
 
-  (groups.weekGroups || []).forEach((group) => {
-    const reward = getGoalRewardEvent("weekly", group, goals.weekly, difficultyMultiplier);
-
-    if (reward) {
-      rewardEvents.push(reward);
-    }
-  });
+  rewardEvents.push(...getRollingWeeklyRewardEvents(dayGroups, goals.weekly, difficultyMultiplier));
 
   (groups.monthGroups || []).forEach((group) => {
     const reward = getGoalRewardEvent("monthly", group, goals.monthly, difficultyMultiplier);
@@ -870,11 +870,9 @@ function deriveCurrentRewardEvents(events, goals, now) {
   const rewardEvents = [];
   const difficultyMultiplier = calculateDifficultyMultiplier(goals.daily);
   const dayStart = toDayStart(now);
-  const weekStart = toWeekStart(now);
   const monthStart = toMonthStart(now);
   const yearStart = toYearStart(now);
   const dayGroup = createRewardBucketFromEvents(toDayKey(now), dayStart, events.filter((event) => event.timestamp >= dayStart));
-  const weekGroup = createRewardBucketFromEvents(toWeekKey(now), weekStart, events.filter((event) => event.timestamp >= weekStart));
   const monthGroup = createRewardBucketFromEvents(toMonthKey(now), monthStart, events.filter((event) => event.timestamp >= monthStart));
   const yearGroup = createRewardBucketFromEvents(toYearKey(now), yearStart, events.filter((event) => event.timestamp >= yearStart));
 
@@ -882,12 +880,18 @@ function deriveCurrentRewardEvents(events, goals, now) {
     rewardEvents.push(...getDailyRewardEvents(dayGroup, calculateStreak(events, now), goals.daily, difficultyMultiplier));
   }
 
-  [weekGroup, monthGroup, yearGroup].forEach((group, index) => {
+  const rollingWeeklyReward = getCurrentRollingWeeklyRewardEvent(events, goals.weekly, difficultyMultiplier, now);
+
+  if (rollingWeeklyReward) {
+    rewardEvents.push(rollingWeeklyReward);
+  }
+
+  [monthGroup, yearGroup].forEach((group, index) => {
     if (!group) {
       return;
     }
 
-    const scope = ["weekly", "monthly", "yearly"][index];
+    const scope = ["monthly", "yearly"][index];
     const reward = getGoalRewardEvent(scope, group, goals[scope], difficultyMultiplier);
 
     if (reward) {
@@ -937,6 +941,69 @@ function getGoalRewardEvent(scope, group, goal, difficultyMultiplier) {
   }
 
   return createRewardEvent("goal", scope, scaleGoalBonus(baseBonus, difficultyMultiplier), group);
+}
+
+function getRollingWeeklyRewardEvents(dayGroups, weeklyGoal, difficultyMultiplier) {
+  const groups = Array.isArray(dayGroups) ? dayGroups : [];
+  const rewardEvents = [];
+  const goalXp = calculateGoalXp(weeklyGoal);
+
+  if (goalXp <= 0) {
+    return rewardEvents;
+  }
+
+  groups.forEach((group) => {
+    const windowStart = toRollingWeekStart(group.start);
+    const hasRecentWeeklyReward = rewardEvents.some((event) => {
+      return event.bonusType === "goal" && event.scope === "weekly" && event.timestamp >= windowStart;
+    });
+
+    if (hasRecentWeeklyReward) {
+      return;
+    }
+
+    const baseXp = groups
+      .filter((entry) => entry.start >= windowStart && entry.start <= group.start)
+      .reduce((total, entry) => total + entry.baseXp, 0);
+
+    if (baseXp < goalXp) {
+      return;
+    }
+
+    const bucket = createRewardBucket(toDayKey(group.start), windowStart);
+    bucket.baseXp = baseXp;
+    bucket.lastTimestamp = group.lastTimestamp;
+
+    const reward = getGoalRewardEvent("weekly", bucket, weeklyGoal, difficultyMultiplier);
+
+    if (reward) {
+      rewardEvents.push(reward);
+    }
+  });
+
+  return rewardEvents;
+}
+
+function getCurrentRollingWeeklyRewardEvent(events, weeklyGoal, difficultyMultiplier, now) {
+  const dayStart = toDayStart(now);
+  const hasEventToday = Array.isArray(events) && events.some((event) => event.timestamp >= dayStart);
+
+  if (!hasEventToday) {
+    return null;
+  }
+
+  const rollingStart = toRollingWeekStart(now);
+  const group = createRewardBucketFromEvents(
+    toDayKey(now),
+    rollingStart,
+    events.filter((event) => event.timestamp >= rollingStart)
+  );
+
+  if (!group) {
+    return null;
+  }
+
+  return getGoalRewardEvent("weekly", group, weeklyGoal, difficultyMultiplier);
 }
 
 function createRewardBucketFromEvents(key, start, events) {
@@ -1133,9 +1200,6 @@ function getTimeWindows(now) {
   const daily = new Date(current);
   daily.setHours(0, 0, 0, 0);
 
-  const weekly = new Date(daily);
-  weekly.setDate(weekly.getDate() - weekly.getDay());
-
   const monthly = new Date(daily);
   monthly.setDate(1);
 
@@ -1144,7 +1208,7 @@ function getTimeWindows(now) {
 
   return {
     daily: daily.getTime(),
-    weekly: weekly.getTime(),
+    weekly: toRollingWeekStart(now),
     monthly: monthly.getTime(),
     yearly: yearly.getTime()
   };
@@ -1342,6 +1406,12 @@ function toDayStart(timestamp) {
 function toWeekStart(timestamp) {
   const date = new Date(toDayStart(timestamp));
   date.setDate(date.getDate() - date.getDay());
+  return date.getTime();
+}
+
+function toRollingWeekStart(timestamp) {
+  const date = new Date(toDayStart(timestamp));
+  date.setDate(date.getDate() - 6);
   return date.getTime();
 }
 

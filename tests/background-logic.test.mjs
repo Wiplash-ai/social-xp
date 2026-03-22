@@ -80,6 +80,7 @@ globalThis.__testExports = {
   getStreakBonusXp,
   getLevelRequirement,
   calculateLevel,
+  getTimeWindows,
   deriveRewardEvents,
   updateRewardEvents,
   replaceCurrentRewardEvents
@@ -160,6 +161,23 @@ test("weekly reward derivation grants daily, weekly, and streak rewards", () => 
     .reduce((total, event) => total + event.xp, 0);
 
   assert.equal(streakXp, 30);
+});
+
+test("weekly window uses a rolling seven-day range", () => {
+  const now = new Date(2026, 2, 22, 12, 0, 0, 0).getTime();
+  const windows = api.getTimeWindows(now);
+
+  assert.equal(
+    windows.weekly,
+    new Date(2026, 2, 16, 0, 0, 0, 0).getTime()
+  );
+});
+
+test("rolling weekly rewards can trigger once per seven-day cooldown", () => {
+  const events = Array.from({ length: 14 }, (_, index) => createDailyGoalEvents(index)).flat();
+  const rewards = api.deriveRewardEvents(events, api.DEFAULT_GOALS);
+
+  assert.equal(countRewards(rewards, "goal", "weekly"), 2);
 });
 
 test("overgoal rewards stack at 125%, 150%, and 200% of the daily target", () => {
