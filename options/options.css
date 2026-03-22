@@ -7,8 +7,84 @@
   --gold-bright: #ffe7a1;
   --gold-soft: #f0c865;
   --gold-deep: #84540f;
+  --gold-text-gradient: linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%);
   --line: rgba(255, 222, 132, 0.1);
   --shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+  --page-bg:
+    radial-gradient(circle at top right, rgba(255, 208, 95, 0.14), transparent 22%),
+    radial-gradient(circle at 10% 90%, rgba(190, 120, 18, 0.16), transparent 18%),
+    linear-gradient(180deg, #040404 0%, #0c0c0c 100%);
+  --page-glow-top: radial-gradient(circle, rgba(255, 229, 156, 0.16), rgba(255, 190, 58, 0.02) 68%, transparent 72%);
+  --page-glow-bottom: radial-gradient(circle, rgba(190, 120, 18, 0.18), rgba(255, 229, 156, 0.03) 64%, transparent 72%);
+  --surface-bg: linear-gradient(180deg, rgba(20, 20, 20, 0.96), rgba(8, 8, 8, 0.96));
+  --ghost-bg: rgba(255, 255, 255, 0.04);
+  --ghost-border: rgba(255, 224, 141, 0.22);
+  --tile-bg:
+    linear-gradient(155deg, rgba(255, 228, 144, 0.07), rgba(255, 188, 58, 0.03)),
+    rgba(255, 255, 255, 0.03);
+  --chip-bg:
+    linear-gradient(160deg, rgba(255, 228, 144, 0.09), rgba(255, 188, 58, 0.04)),
+    rgba(255, 255, 255, 0.03);
+  --panel-glow: radial-gradient(circle, rgba(255, 229, 156, 0.16), transparent 64%);
+  --scan-beam: linear-gradient(90deg, transparent, rgba(255, 233, 184, 0.05), transparent);
+  --field-bg: rgba(255, 255, 255, 0.04);
+  --field-border: rgba(255, 224, 141, 0.14);
+  --field-bg-focus: rgba(255, 255, 255, 0.06);
+  --field-focus-outline: rgba(255, 226, 149, 0.36);
+  --field-focus-ring: 0 0 0 4px rgba(255, 224, 141, 0.06);
+  --modal-backdrop: rgba(4, 4, 4, 0.72);
+  --modal-bg:
+    radial-gradient(circle at top right, rgba(255, 219, 121, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(8, 8, 8, 0.98));
+  --modal-border: rgba(255, 224, 141, 0.2);
+  --modal-shadow: 0 28px 70px rgba(0, 0, 0, 0.52);
+  --section-border: rgba(255, 224, 141, 0.12);
+  --hover-border: rgba(255, 224, 141, 0.28);
+  --hover-shadow: 0 18px 34px rgba(0, 0, 0, 0.3);
+  --surface-soft-bg: rgba(255, 255, 255, 0.03);
+  --button-solid-text: #241600;
+}
+
+body[data-theme="light"] {
+  color-scheme: light;
+  --panel-border: rgba(193, 149, 49, 0.22);
+  --text: #2c1d09;
+  --muted: rgba(104, 77, 27, 0.76);
+  --gold-text-gradient: linear-gradient(180deg, #d9a43a 0%, #b97c16 38%, #8f590d 72%, #5d3908 100%);
+  --line: rgba(193, 149, 49, 0.12);
+  --shadow: 0 22px 56px rgba(120, 88, 22, 0.14);
+  --page-bg:
+    radial-gradient(circle at top right, rgba(255, 208, 95, 0.28), transparent 22%),
+    radial-gradient(circle at 10% 90%, rgba(208, 153, 42, 0.16), transparent 18%),
+    linear-gradient(180deg, #fffdf7 0%, #f6edd8 100%);
+  --page-glow-top: radial-gradient(circle, rgba(255, 221, 132, 0.28), rgba(255, 255, 255, 0) 68%, transparent 72%);
+  --page-glow-bottom: radial-gradient(circle, rgba(218, 169, 69, 0.2), rgba(255, 243, 209, 0.02) 64%, transparent 72%);
+  --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 241, 221, 0.98));
+  --ghost-bg: rgba(255, 255, 255, 0.72);
+  --ghost-border: rgba(193, 149, 49, 0.24);
+  --tile-bg:
+    linear-gradient(155deg, rgba(255, 232, 170, 0.42), rgba(255, 249, 231, 0.76)),
+    rgba(255, 255, 255, 0.52);
+  --chip-bg:
+    linear-gradient(160deg, rgba(255, 232, 170, 0.48), rgba(255, 255, 255, 0.78)),
+    rgba(255, 255, 255, 0.62);
+  --panel-glow: radial-gradient(circle, rgba(255, 223, 143, 0.26), transparent 64%);
+  --scan-beam: linear-gradient(90deg, transparent, rgba(193, 149, 49, 0.08), transparent);
+  --field-bg: rgba(255, 255, 255, 0.84);
+  --field-border: rgba(193, 149, 49, 0.18);
+  --field-bg-focus: rgba(255, 255, 255, 0.98);
+  --field-focus-outline: rgba(193, 149, 49, 0.32);
+  --field-focus-ring: 0 0 0 4px rgba(193, 149, 49, 0.08);
+  --modal-backdrop: rgba(146, 120, 66, 0.22);
+  --modal-bg:
+    radial-gradient(circle at top right, rgba(255, 216, 124, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 241, 221, 0.98));
+  --modal-border: rgba(193, 149, 49, 0.2);
+  --modal-shadow: 0 22px 56px rgba(134, 101, 30, 0.18);
+  --section-border: rgba(193, 149, 49, 0.14);
+  --hover-border: rgba(193, 149, 49, 0.3);
+  --hover-shadow: 0 18px 34px rgba(148, 111, 34, 0.16);
+  --surface-soft-bg: rgba(255, 255, 255, 0.56);
 }
 
 * {
@@ -25,10 +101,7 @@ body {
   position: relative;
   overflow: hidden;
   color: var(--text);
-  background:
-    radial-gradient(circle at top right, rgba(255, 208, 95, 0.14), transparent 22%),
-    radial-gradient(circle at 10% 90%, rgba(190, 120, 18, 0.16), transparent 18%),
-    linear-gradient(180deg, #040404 0%, #0c0c0c 100%);
+  background: var(--page-bg);
   font-family: "Trebuchet MS", "Gill Sans", sans-serif;
 }
 
@@ -52,7 +125,7 @@ body::before {
   right: 8%;
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(255, 229, 156, 0.16), rgba(255, 190, 58, 0.02) 68%, transparent 72%);
+  background: var(--page-glow-top);
   animation: driftGlow 14s ease-in-out infinite;
 }
 
@@ -61,7 +134,7 @@ body::after {
   bottom: 8%;
   width: 240px;
   height: 240px;
-  background: radial-gradient(circle, rgba(190, 120, 18, 0.18), rgba(255, 229, 156, 0.03) 64%, transparent 72%);
+  background: var(--page-glow-bottom);
   animation: driftGlow 18s ease-in-out infinite reverse;
 }
 
@@ -82,7 +155,7 @@ body::after {
 .hero-card,
 .hero-chip,
 .site-card {
-  background: linear-gradient(180deg, rgba(20, 20, 20, 0.96), rgba(8, 8, 8, 0.96));
+  background: var(--surface-bg);
   border: 1px solid var(--panel-border);
   box-shadow: var(--shadow);
 }
@@ -149,6 +222,22 @@ h3 {
   justify-content: flex-end;
 }
 
+.theme-button {
+  min-width: 132px;
+  justify-content: center;
+}
+
+.theme-toggle-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+
+.theme-toggle-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 .nav-button,
 .primary-button,
 .ghost-button {
@@ -156,12 +245,16 @@ h3 {
   border-radius: 999px;
   font: inherit;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .nav-button {
-  border: 1px solid rgba(255, 224, 141, 0.22);
+  border: 1px solid var(--ghost-border);
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ghost-bg);
   padding: 10px 16px;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
@@ -169,7 +262,7 @@ h3 {
 .nav-button.is-active,
 .primary-button {
   border: 0;
-  color: #241600;
+  color: var(--button-solid-text);
   font-weight: 700;
   background: linear-gradient(90deg, var(--gold), var(--gold-bright));
 }
@@ -236,9 +329,7 @@ h3 {
 .site-card {
   border-radius: 20px;
   padding: 14px;
-  background:
-    linear-gradient(155deg, rgba(255, 228, 144, 0.07), rgba(255, 188, 58, 0.03)),
-    rgba(255, 255, 255, 0.03);
+  background: var(--tile-bg);
   overflow: hidden;
   opacity: 0;
   transform: translateY(18px) scale(0.985);
@@ -289,7 +380,7 @@ h3 {
   inset: -18% auto -18% -12%;
   width: 28%;
   transform: skewX(-22deg);
-  background: linear-gradient(90deg, transparent, rgba(255, 233, 184, 0.05), transparent);
+  background: var(--scan-beam);
   animation: scanBeam 8s linear infinite;
   pointer-events: none;
 }
@@ -337,8 +428,8 @@ label {
 input {
   width: 100%;
   border-radius: 14px;
-  border: 1px solid rgba(255, 224, 141, 0.14);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--text);
   padding: 12px 14px;
   font: inherit;
@@ -346,11 +437,11 @@ input {
 }
 
 input:focus {
-  outline: 1px solid rgba(255, 226, 149, 0.36);
-  border-color: rgba(255, 226, 149, 0.36);
-  box-shadow: 0 0 0 4px rgba(255, 224, 141, 0.06);
+  outline: 1px solid var(--field-focus-outline);
+  border-color: var(--field-focus-outline);
+  box-shadow: var(--field-focus-ring);
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--field-bg-focus);
 }
 
 .action-row {
@@ -366,9 +457,9 @@ input:focus {
 }
 
 .ghost-button {
-  border: 1px solid rgba(255, 224, 141, 0.22);
+  border: 1px solid var(--ghost-border);
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ghost-bg);
 }
 
 .hero-card {
@@ -384,7 +475,7 @@ input:focus {
   position: absolute;
   inset: auto -8% -48% 38%;
   height: 260px;
-  background: radial-gradient(circle, rgba(255, 229, 156, 0.16), transparent 64%);
+  background: var(--panel-glow);
   pointer-events: none;
 }
 
@@ -404,9 +495,7 @@ input:focus {
 .hero-chip {
   border-radius: 20px;
   padding: 14px;
-  background:
-    linear-gradient(160deg, rgba(255, 228, 144, 0.09), rgba(255, 188, 58, 0.04)),
-    rgba(255, 255, 255, 0.03);
+  background: var(--chip-bg);
   opacity: 0;
   transform: translateY(18px) scale(0.985);
   animation: tileRise 560ms cubic-bezier(0.2, 0.9, 0.24, 1) forwards;
@@ -430,7 +519,7 @@ input:focus {
   margin-top: 8px;
   font-size: 26px;
   color: transparent;
-  background: linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%);
+  background: var(--gold-text-gradient);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -462,7 +551,7 @@ input:focus {
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(4, 4, 4, 0.72);
+  background: var(--modal-backdrop);
   backdrop-filter: blur(12px);
 }
 
@@ -473,12 +562,10 @@ input:focus {
   overflow: auto;
   padding: 22px;
   border-radius: 28px;
-  border: 1px solid rgba(255, 224, 141, 0.2);
+  border: 1px solid var(--modal-border);
   color: var(--text);
-  background:
-    radial-gradient(circle at top right, rgba(255, 219, 121, 0.14), transparent 34%),
-    linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(8, 8, 8, 0.98));
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.52);
+  background: var(--modal-bg);
+  box-shadow: var(--modal-shadow);
   animation: panelRise 320ms cubic-bezier(0.2, 0.9, 0.24, 1) forwards;
 }
 
@@ -488,10 +575,10 @@ input:focus {
   right: 16px;
   width: 38px;
   height: 38px;
-  border: 1px solid rgba(255, 224, 141, 0.18);
+  border: 1px solid var(--ghost-border);
   border-radius: 999px;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ghost-bg);
   font: inherit;
   font-size: 24px;
   line-height: 1;
@@ -520,10 +607,10 @@ input:focus {
 .modal-section {
   padding: 16px;
   border-radius: 22px;
-  border: 1px solid rgba(255, 224, 141, 0.12);
+  border: 1px solid var(--section-border);
   background:
     linear-gradient(160deg, rgba(255, 228, 144, 0.06), rgba(255, 188, 58, 0.03)),
-    rgba(255, 255, 255, 0.03);
+    var(--surface-soft-bg);
 }
 
 .modal-section-wide {
@@ -551,9 +638,9 @@ input:focus {
   margin-top: 10px;
   padding: 12px 14px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 224, 141, 0.12);
-  color: #fff5cf;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--section-border);
+  color: var(--text);
+  background: var(--ghost-bg);
   font: 13px/1.5 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   overflow-wrap: anywhere;
 }
@@ -565,7 +652,7 @@ input:focus {
 
 .goal-grid strong {
   color: transparent;
-  background: linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%);
+  background: var(--gold-text-gradient);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -580,8 +667,8 @@ input:focus {
 .site-card:hover,
 .hero-chip:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 224, 141, 0.28);
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.3);
+  border-color: var(--hover-border);
+  box-shadow: var(--hover-shadow);
 }
 
 @keyframes driftGlow {

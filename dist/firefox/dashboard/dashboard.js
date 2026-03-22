@@ -7,15 +7,18 @@ const TIMEFRAME_LABELS = {
   monthly: "Monthly",
   yearly: "Yearly"
 };
+const THEME_MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
 let dashboardState = null;
 let selectedTimeframe = "weekly";
 let removalBusyId = "";
 let currentDangerPhrase = "";
 let manualBusy = false;
 let manualFormOpen = false;
+let themePreference = "system";
 
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openGoals").addEventListener("click", openGoalsPage);
+  document.getElementById("toggleTheme").addEventListener("click", handleThemeToggle);
   document.getElementById("openDangerZone").addEventListener("click", openDangerZone);
   document.getElementById("closeDangerZone").addEventListener("click", closeDangerZone);
   document.querySelectorAll("[data-close-danger]").forEach((element) => {
@@ -26,7 +29,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("addManualActivity").addEventListener("click", addManualActivity);
   document.getElementById("toggleManualForm").addEventListener("click", toggleManualForm);
   document.addEventListener("keydown", handleGlobalKeydown);
+  THEME_MEDIA.addEventListener("change", handleThemeMediaChange);
   refreshDangerPhrase();
+  applyThemePreference("system");
 
   document.querySelectorAll("[data-timeframe]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -50,6 +55,7 @@ async function refreshDashboard() {
 
     const previousDashboard = dashboardState;
     dashboardState = response.dashboard;
+    applyThemePreference(response.settings && response.settings.themePreference);
     renderDashboard(dashboardState);
 
     if (previousDashboard && dashboardState.level.level > previousDashboard.level.level) {
@@ -117,6 +123,9 @@ function renderTrendChart(analytics) {
   const graphHeight = height - padding.top - padding.bottom;
   const maxValue = Math.max(1, analytics.maxXp);
   const labelStep = Math.max(1, Math.ceil(points.length / 7));
+  const gridColor = getThemeValue("--line", "rgba(255,222,132,0.12)");
+  const labelColor = getThemeValue("--muted", "rgba(255,233,184,0.72)");
+  const pointSurface = document.body.dataset.theme === "light" ? "#fffdf7" : "#060606";
 
   if (points.length === 0) {
     svg.innerHTML = "";
@@ -161,7 +170,7 @@ function renderTrendChart(analytics) {
     ${[0, 1, 2, 3]
       .map((step) => {
         const y = padding.top + (graphHeight / 3) * step;
-        return `<line class="trend-grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(255,222,132,0.12)" stroke-width="1"></line>`;
+        return `<line class="trend-grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${gridColor}" stroke-width="1"></line>`;
       })
       .join("")}
     <path class="trend-area" d="${areaPath}" fill="url(#graphFill)"></path>
@@ -170,7 +179,7 @@ function renderTrendChart(analytics) {
       .map((coordinate, index) => {
         return `
           <g class="trend-point" style="--point-delay:${140 + index * 55}ms">
-            <circle class="trend-point-ring" cx="${coordinate.x}" cy="${coordinate.y}" r="5.5" fill="#060606" stroke="#ffe7a1" stroke-width="2"></circle>
+            <circle class="trend-point-ring" cx="${coordinate.x}" cy="${coordinate.y}" r="5.5" fill="${pointSurface}" stroke="#ffe7a1" stroke-width="2"></circle>
             <circle class="trend-point-core" cx="${coordinate.x}" cy="${coordinate.y}" r="2.5" fill="#d5aa44"></circle>
           </g>
         `;
@@ -183,7 +192,7 @@ function renderTrendChart(analytics) {
         }
 
         return `
-          <text class="trend-label" x="${coordinate.x}" y="${height - 8}" text-anchor="middle" fill="rgba(255,233,184,0.72)" font-size="11" style="--label-delay:${180 + index * 45}ms">
+          <text class="trend-label" x="${coordinate.x}" y="${height - 8}" text-anchor="middle" fill="${labelColor}" font-size="11" style="--label-delay:${180 + index * 45}ms">
             ${escapeHtml(coordinate.point.shortLabel)}
           </text>
         `;
@@ -227,9 +236,10 @@ function renderMixChart(summary) {
   const repliesRatio = summary.replies / total;
   const postsLength = Math.max(postsRatio * 100, 0);
   const repliesLength = Math.max(repliesRatio * 100, 0);
+  const trackColor = getThemeValue("--track-bg", "rgba(255,255,255,0.08)");
 
   svg.innerHTML = `
-    <circle class="mix-track" cx="80" cy="80" r="52" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="16"></circle>
+    <circle class="mix-track" cx="80" cy="80" r="52" fill="none" stroke="${trackColor}" stroke-width="16"></circle>
     <circle
       class="mix-ring mix-ring-posts"
       cx="80"
@@ -283,6 +293,14 @@ function handleStorageChange(changes, areaName) {
     return;
   }
 
+  if (changes.socialXpSettings) {
+    applyThemePreference(changes.socialXpSettings.newValue && changes.socialXpSettings.newValue.themePreference);
+
+    if (dashboardState) {
+      renderDashboard(dashboardState);
+    }
+  }
+
   if (changes.socialXpEvents || changes.socialXpGoals || changes.socialXpRewardEvents) {
     refreshDashboard();
   }
@@ -291,6 +309,16 @@ function handleStorageChange(changes, areaName) {
 function handleGlobalKeydown(event) {
   if (event.key === "Escape") {
     closeDangerZone();
+  }
+}
+
+function handleThemeMediaChange() {
+  if (themePreference === "system") {
+    applyThemePreference("system");
+
+    if (dashboardState) {
+      renderDashboard(dashboardState);
+    }
   }
 }
 
@@ -545,6 +573,77 @@ function syncManualForm() {
   }
 }
 
+async function handleThemeToggle() {
+  const nextPreference = getNextThemePreference(themePreference, getSystemTheme());
+
+  try {
+    const response = await sendMessage({
+      type: "SAVE_SETTINGS",
+      payload: {
+        settings: {
+          themePreference: nextPreference
+        }
+      }
+    });
+
+    if (!response || !response.ok) {
+      throw new Error(response && response.error ? response.error : "Unable to save theme");
+    }
+
+    applyThemePreference(response.settings && response.settings.themePreference);
+
+    if (dashboardState) {
+      renderDashboard(dashboardState);
+    }
+  } catch (error) {
+    applyThemePreference(themePreference);
+  }
+}
+
+function applyThemePreference(nextPreference) {
+  themePreference = sanitizeThemePreference(nextPreference);
+
+  const effectiveTheme = resolveEffectiveTheme(themePreference);
+  document.body.dataset.theme = effectiveTheme;
+  document.documentElement.style.colorScheme = effectiveTheme;
+  renderThemeToggle();
+}
+
+function renderThemeToggle() {
+  const button = document.getElementById("toggleTheme");
+  const icon = document.getElementById("themeToggleIcon");
+  const label = document.getElementById("themeToggleLabel");
+  const effectiveTheme = resolveEffectiveTheme(themePreference);
+  const systemTheme = getSystemTheme();
+
+  if (!button || !icon || !label) {
+    return;
+  }
+
+  icon.innerHTML = effectiveTheme === "light" ? getThemeIcon("sun") : getThemeIcon("moon");
+  label.textContent = `${themePreference === "system" ? "Auto" : "Manual"} ${capitalize(effectiveTheme)}`;
+  button.title = themePreference === "system"
+    ? `Following your system ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`
+    : `Using ${effectiveTheme} mode. Click to return to system ${systemTheme} mode.`;
+}
+
+function getNextThemePreference(currentPreference, systemTheme) {
+  return currentPreference === "system" ? (systemTheme === "dark" ? "light" : "dark") : "system";
+}
+
+function getSystemTheme() {
+  return THEME_MEDIA.matches ? "dark" : "light";
+}
+
+function resolveEffectiveTheme(preference) {
+  const normalized = sanitizeThemePreference(preference);
+  return normalized === "system" ? getSystemTheme() : normalized;
+}
+
+function sanitizeThemePreference(value) {
+  return value === "light" || value === "dark" ? value : "system";
+}
+
 function formatEventTime(timestamp) {
   return new Date(timestamp).toLocaleTimeString(undefined, {
     hour: "numeric",
@@ -743,6 +842,23 @@ function sendMessage(message) {
   });
 }
 
+function getThemeIcon(type) {
+  if (type === "sun") {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+        <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.8"></circle>
+        <path d="M12 2.8V5.2M12 18.8V21.2M21.2 12H18.8M5.2 12H2.8M18.5 5.5L16.8 7.2M7.2 16.8L5.5 18.5M18.5 18.5L16.8 16.8M7.2 7.2L5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+      <path d="M19.2 14.1A7.5 7.5 0 1 1 9.9 4.8A6.6 6.6 0 0 0 19.2 14.1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+    </svg>
+  `;
+}
+
 function siteGradient(siteId) {
   const gradients = {
     x: "linear-gradient(135deg, #ffe7a1, #a86d18)",
@@ -757,6 +873,11 @@ function siteGradient(siteId) {
   return gradients[siteId] || "linear-gradient(135deg, #ffe7a1, #84540f)";
 }
 
+function getThemeValue(name, fallback) {
+  const value = window.getComputedStyle(document.body).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -764,4 +885,8 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function capitalize(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }

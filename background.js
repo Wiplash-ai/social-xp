@@ -51,7 +51,8 @@ const LEGACY_DEFAULT_GOALS = Object.freeze({
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
-  toastEnabled: true
+  toastEnabled: true,
+  themePreference: "system"
 });
 const SITE_LABELS = Object.freeze({
   x: "X",
@@ -115,6 +116,8 @@ async function handleMessage(message) {
       return getDashboardData();
     case "SAVE_GOALS":
       return saveGoals(message.payload || {});
+    case "SAVE_SETTINGS":
+      return saveSettings(message.payload || {});
     case "ADD_MANUAL_ACTIVITY":
       return addManualActivity(message.payload || {});
     case "REMOVE_ACTIVITY_EVENT":
@@ -171,8 +174,14 @@ async function ensureInitialized() {
     }
   }
 
-  if (!stored[STORAGE_KEYS.settings] || typeof stored[STORAGE_KEYS.settings] !== "object") {
-    next[STORAGE_KEYS.settings] = { ...DEFAULT_SETTINGS };
+  const sanitizedSettings = sanitizeSettings(stored[STORAGE_KEYS.settings]);
+
+  if (
+    !stored[STORAGE_KEYS.settings] ||
+    typeof stored[STORAGE_KEYS.settings] !== "object" ||
+    !settingsEqual(stored[STORAGE_KEYS.settings], sanitizedSettings)
+  ) {
+    next[STORAGE_KEYS.settings] = sanitizedSettings;
   }
 
   if (Object.keys(next).length > 0) {
@@ -198,7 +207,7 @@ async function logActivity(payload) {
   const existingEvents = normalizeEvents(stored[STORAGE_KEYS.events]);
   const existingRewards = pruneRewardEvents(normalizeRewardEvents(stored[STORAGE_KEYS.rewards]), now);
   const goals = isValidGoals(stored[STORAGE_KEYS.goals]) ? stored[STORAGE_KEYS.goals] : cloneGoals(DEFAULT_GOALS);
-  const settings = stored[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
+  const settings = sanitizeSettings(stored[STORAGE_KEYS.settings]);
   const previousDashboard = buildDashboard(existingEvents, goals, existingRewards, now);
   const recentEvent = [...existingEvents]
     .reverse()
@@ -269,7 +278,7 @@ async function getDashboardData() {
   const events = normalizeEvents(stored[STORAGE_KEYS.events]);
   const rewardEvents = normalizeRewardEvents(stored[STORAGE_KEYS.rewards]);
   const goals = isValidGoals(stored[STORAGE_KEYS.goals]) ? stored[STORAGE_KEYS.goals] : cloneGoals(DEFAULT_GOALS);
-  const settings = stored[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
+  const settings = sanitizeSettings(stored[STORAGE_KEYS.settings]);
 
   return {
     ok: true,
@@ -299,6 +308,25 @@ async function saveGoals(payload) {
       normalizeRewardEvents(stored[STORAGE_KEYS.rewards]),
       Date.now()
     )
+  };
+}
+
+async function saveSettings(payload) {
+  const stored = await storageGet({
+    [STORAGE_KEYS.settings]: { ...DEFAULT_SETTINGS }
+  });
+  const nextSettings = sanitizeSettings({
+    ...sanitizeSettings(stored[STORAGE_KEYS.settings]),
+    ...(payload && payload.settings && typeof payload.settings === "object" ? payload.settings : {})
+  });
+
+  await storageSet({
+    [STORAGE_KEYS.settings]: nextSettings
+  });
+
+  return {
+    ok: true,
+    settings: nextSettings
   };
 }
 
@@ -1193,6 +1221,15 @@ function sanitizeGoals(goals) {
   return sanitized;
 }
 
+function sanitizeSettings(settings) {
+  const source = settings && typeof settings === "object" ? settings : {};
+
+  return {
+    toastEnabled: source.toastEnabled !== false,
+    themePreference: sanitizeThemePreference(source.themePreference)
+  };
+}
+
 function isValidGoals(goals) {
   return Boolean(
     goals &&
@@ -1205,6 +1242,16 @@ function isValidGoals(goals) {
 
 function cloneGoals(goals) {
   return sanitizeGoals(goals);
+}
+
+function settingsEqual(left, right) {
+  const normalizedLeft = sanitizeSettings(left);
+  const normalizedRight = sanitizeSettings(right);
+
+  return (
+    normalizedLeft.toastEnabled === normalizedRight.toastEnabled &&
+    normalizedLeft.themePreference === normalizedRight.themePreference
+  );
 }
 
 function goalsEqual(left, right) {
@@ -1242,6 +1289,10 @@ function normalizeSupportedSite(value) {
 
   const normalized = value.trim().toLowerCase();
   return Object.prototype.hasOwnProperty.call(SITE_LABELS, normalized) ? normalized : "";
+}
+
+function sanitizeThemePreference(value) {
+  return value === "light" || value === "dark" ? value : "system";
 }
 
 function sanitizeContextLabel(value) {

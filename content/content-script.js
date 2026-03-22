@@ -17,7 +17,8 @@
   const STORAGE_KEYS = Object.freeze({
     events: "socialXpEvents",
     goals: "socialXpGoals",
-    widgetPositions: "socialXpWidgetPositions"
+    widgetPositions: "socialXpWidgetPositions",
+    settings: "socialXpSettings"
   });
 
   const SITE_CONFIGS = [
@@ -92,6 +93,7 @@
   ];
 
   const activeSite = getActiveSite();
+  const THEME_MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
   const queuedFingerprints = new Map();
   let toastRoot = null;
   let focusPanelHost = null;
@@ -105,6 +107,7 @@
   let widgetPosition = null;
   let widgetPositionLoaded = false;
   let widgetDragState = null;
+  let widgetThemePreference = "system";
 
   if (!activeSite) {
     return;
@@ -116,6 +119,7 @@
     document.addEventListener("click", handleClick, true);
     document.addEventListener("submit", handleSubmit, true);
     window.addEventListener("resize", handleWindowResize);
+    THEME_MEDIA.addEventListener("change", handleThemeMediaChange);
 
     if (activeSite.enableEnterTracking) {
       document.addEventListener("keydown", handleKeydown, true);
@@ -199,7 +203,11 @@
       return;
     }
 
-    if (widgetVisible && (changes[STORAGE_KEYS.events] || changes[STORAGE_KEYS.goals])) {
+    if (changes[STORAGE_KEYS.settings]) {
+      applyWidgetThemePreference(changes[STORAGE_KEYS.settings].newValue && changes[STORAGE_KEYS.settings].newValue.themePreference);
+    }
+
+    if (widgetVisible && (changes[STORAGE_KEYS.events] || changes[STORAGE_KEYS.goals] || changes[STORAGE_KEYS.settings])) {
       if (Date.now() < widgetRefreshHoldUntil) {
         return;
       }
@@ -215,6 +223,16 @@
 
     widgetPosition = clampWidgetPosition(widgetPosition);
     applyWidgetPosition();
+  }
+
+  function handleThemeMediaChange() {
+    if (widgetThemePreference === "system") {
+      applyWidgetThemePreference("system");
+
+      if (widgetVisible) {
+        refreshFocusPanel();
+      }
+    }
   }
 
   function handleRuntimeMessage(message, sender, sendResponse) {
@@ -321,6 +339,8 @@
         if (!response || !response.ok || response.duplicate) {
           return;
         }
+
+        applyWidgetThemePreference(response.settings && response.settings.themePreference);
 
         if (widgetVisible && response.dashboard) {
           widgetRefreshHoldUntil = Date.now() + (response.levelUp ? 2800 : 900);
@@ -600,6 +620,7 @@
         throw new Error(response && response.error ? response.error : "Unable to load Social-XP");
       }
 
+      applyWidgetThemePreference(response.settings && response.settings.themePreference);
       renderFocusPanel(response.dashboard);
       return { ok: true, visible: true };
     } catch (error) {
@@ -610,6 +631,109 @@
         error: error && error.message ? error.message : "Unable to load Social-XP"
       };
     }
+  }
+
+  function applyWidgetThemePreference(nextPreference) {
+    widgetThemePreference = sanitizeThemePreference(nextPreference);
+  }
+
+  function getSystemTheme() {
+    return THEME_MEDIA.matches ? "dark" : "light";
+  }
+
+  function getEffectiveWidgetTheme() {
+    return widgetThemePreference === "system" ? getSystemTheme() : widgetThemePreference;
+  }
+
+  function sanitizeThemePreference(value) {
+    return value === "light" || value === "dark" ? value : "system";
+  }
+
+  function getNextThemePreference() {
+    return widgetThemePreference === "system" ? (getSystemTheme() === "dark" ? "light" : "dark") : "system";
+  }
+
+  function getThemeToggleMeta() {
+    const effectiveTheme = getEffectiveWidgetTheme();
+    const systemTheme = getSystemTheme();
+
+    return {
+      effectiveTheme,
+      icon: effectiveTheme === "light" ? "sun" : "moon",
+      title: widgetThemePreference === "system"
+        ? `Following your system ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`
+        : `Using ${effectiveTheme} mode. Click to return to system ${systemTheme} mode.`
+    };
+  }
+
+  function getWidgetThemeTokens() {
+    if (getEffectiveWidgetTheme() === "light") {
+      return {
+        colorScheme: "light",
+        text: "#2c1d09",
+        muted: "rgba(104, 77, 27, 0.76)",
+        mutedSoft: "rgba(120, 89, 31, 0.72)",
+        panelBorder: "rgba(193, 149, 49, 0.22)",
+        panelBg: "radial-gradient(circle at top right, rgba(255, 216, 124, 0.18), transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(249, 241, 221, 0.98))",
+        panelShadow: "0 18px 38px rgba(125, 93, 28, 0.16)",
+        ghostBg: "rgba(255, 255, 255, 0.74)",
+        ghostBorder: "rgba(193, 149, 49, 0.2)",
+        ghostText: "#2c1d09",
+        chipBg: "linear-gradient(160deg, rgba(255, 232, 170, 0.55), rgba(255, 255, 255, 0.88))",
+        chipBorder: "rgba(205, 166, 71, 0.28)",
+        surfaceBg: "rgba(255, 255, 255, 0.58)",
+        surfaceBorder: "rgba(197, 158, 64, 0.16)",
+        trackBg: "rgba(124, 90, 24, 0.08)",
+        icon: "#b8841d",
+        solidText: "#241400",
+        textGradient: "linear-gradient(180deg, #d9a43a 0%, #b97c16 38%, #8f590d 72%, #5d3908 100%)",
+        toastBg:
+          "radial-gradient(circle at top, rgba(255, 226, 149, 0.28), transparent 54%), linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(249, 241, 221, 0.98))",
+        toastBorder: "rgba(193, 149, 49, 0.24)",
+        toastShadow: "0 18px 40px rgba(125, 93, 28, 0.16)",
+        toastSub: "rgba(104, 77, 27, 0.82)",
+        toastMeta: "rgba(104, 77, 27, 0.74)",
+        levelGlowTop: "rgba(255, 226, 149, 0.28)",
+        levelGlowBottom: "rgba(218, 169, 69, 0.18)",
+        levelBannerBg:
+          "radial-gradient(circle at top, rgba(255, 226, 149, 0.3), transparent 56%), linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 241, 221, 0.98))",
+        levelBannerBorder: "rgba(193, 149, 49, 0.24)",
+        levelBannerShadow: "0 20px 42px rgba(125, 93, 28, 0.16)"
+      };
+    }
+
+    return {
+      colorScheme: "dark",
+      text: "#fff1cf",
+      muted: "rgba(255, 241, 207, 0.76)",
+      mutedSoft: "rgba(255, 233, 184, 0.72)",
+      panelBorder: "rgba(255, 214, 107, 0.22)",
+      panelBg: "radial-gradient(circle at top right, rgba(255, 219, 121, 0.14), transparent 34%), linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(8, 8, 8, 0.98))",
+      panelShadow: "0 20px 40px rgba(0, 0, 0, 0.42)",
+      ghostBg: "rgba(255, 255, 255, 0.05)",
+      ghostBorder: "rgba(255, 224, 141, 0.18)",
+      ghostText: "#fff1cf",
+      chipBg: "linear-gradient(160deg, rgba(255, 228, 144, 0.12), rgba(255, 188, 58, 0.04))",
+      chipBorder: "rgba(255, 228, 144, 0.18)",
+      surfaceBg: "rgba(255, 255, 255, 0.03)",
+      surfaceBorder: "rgba(255, 222, 132, 0.12)",
+      trackBg: "rgba(255, 255, 255, 0.08)",
+      icon: "#d5aa44",
+      solidText: "#221400",
+      textGradient: "linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%)",
+      toastBg:
+        "radial-gradient(circle at top, rgba(255, 239, 191, 0.18), transparent 54%), linear-gradient(145deg, rgba(18, 14, 7, 0.98), rgba(29, 20, 8, 0.98))",
+      toastBorder: "rgba(255, 208, 95, 0.28)",
+      toastShadow: "0 18px 40px rgba(0, 0, 0, 0.48)",
+      toastSub: "rgba(248, 236, 210, 0.82)",
+      toastMeta: "rgba(248, 236, 210, 0.74)",
+      levelGlowTop: "rgba(255, 236, 180, 0.24)",
+      levelGlowBottom: "rgba(255, 197, 74, 0.14)",
+      levelBannerBg:
+        "radial-gradient(circle at top, rgba(255, 239, 191, 0.22), transparent 56%), linear-gradient(180deg, rgba(28, 22, 10, 0.96), rgba(8, 8, 8, 0.96))",
+      levelBannerBorder: "rgba(255, 224, 141, 0.28)",
+      levelBannerShadow: "0 20px 42px rgba(0, 0, 0, 0.38)"
+    };
   }
 
   function renderFocusPanel(dashboard) {
@@ -628,6 +752,8 @@
       : `${daily.remaining.post} posts • ${daily.remaining.reply} replies left`;
     const modeStageClass = widgetTransition ? `mode-stage is-transition ${widgetTransition}` : "mode-stage";
     const levelChipClass = widgetLevelHighlight ? "chip is-level-glow" : "chip";
+    const themeMeta = getThemeToggleMeta();
+    const themeTokens = getWidgetThemeTokens();
     const periodRows = ["daily", "weekly", "monthly", "yearly"]
       .map((period) => {
         const summary = dashboard.periods[period];
@@ -651,6 +777,23 @@
       <style>
         :host {
           all: initial;
+          color-scheme: ${themeTokens.colorScheme};
+          --sx-text: ${themeTokens.text};
+          --sx-muted: ${themeTokens.muted};
+          --sx-muted-soft: ${themeTokens.mutedSoft};
+          --sx-panel-border: ${themeTokens.panelBorder};
+          --sx-panel-bg: ${themeTokens.panelBg};
+          --sx-panel-shadow: ${themeTokens.panelShadow};
+          --sx-ghost-bg: ${themeTokens.ghostBg};
+          --sx-ghost-border: ${themeTokens.ghostBorder};
+          --sx-ghost-text: ${themeTokens.ghostText};
+          --sx-chip-bg: ${themeTokens.chipBg};
+          --sx-chip-border: ${themeTokens.chipBorder};
+          --sx-surface-bg: ${themeTokens.surfaceBg};
+          --sx-surface-border: ${themeTokens.surfaceBorder};
+          --sx-track-bg: ${themeTokens.trackBg};
+          --sx-icon: ${themeTokens.icon};
+          --sx-solid-text: ${themeTokens.solidText};
         }
 
         * {
@@ -660,7 +803,7 @@
         .shell {
           position: relative;
           width: 286px;
-          color: #fff1cf;
+          color: var(--sx-text);
           font: 13px/1.45 "Trebuchet MS", "Gill Sans", sans-serif;
         }
 
@@ -668,11 +811,9 @@
           position: relative;
           overflow: hidden;
           border-radius: 24px;
-          border: 1px solid rgba(255, 214, 107, 0.22);
-          background:
-            radial-gradient(circle at top right, rgba(255, 219, 121, 0.14), transparent 34%),
-            linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(8, 8, 8, 0.98));
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.42);
+          border: 1px solid var(--sx-panel-border);
+          background: var(--sx-panel-bg);
+          box-shadow: var(--sx-panel-shadow);
           backdrop-filter: blur(14px);
         }
 
@@ -702,7 +843,7 @@
 
         .eyebrow {
           margin: 0 0 2px;
-          color: #d5aa44;
+          color: var(--sx-icon);
           font-size: 10px;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -727,7 +868,7 @@
 
         .subtitle {
           margin: 4px 0 0;
-          color: rgba(255, 241, 207, 0.74);
+          color: var(--sx-muted);
         }
 
         .brand-line,
@@ -755,7 +896,7 @@
         .inline-icon {
           width: 14px;
           height: 14px;
-          color: #d5aa44;
+          color: var(--sx-icon);
         }
 
         .brand-badge {
@@ -781,9 +922,9 @@
         .icon-button,
         .action-button,
         .link-button {
-          border: 1px solid rgba(255, 224, 141, 0.18);
-          background: rgba(255, 255, 255, 0.05);
-          color: #fff1cf;
+          border: 1px solid var(--sx-ghost-border);
+          background: var(--sx-ghost-bg);
+          color: var(--sx-ghost-text);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -819,7 +960,7 @@
 
         .hero-sub {
           margin-top: 6px;
-          color: rgba(255, 241, 207, 0.76);
+          color: var(--sx-muted);
         }
 
         .chip {
@@ -827,8 +968,8 @@
           padding: 10px 12px;
           border-radius: 18px;
           text-align: center;
-          background: linear-gradient(160deg, rgba(255, 228, 144, 0.12), rgba(255, 188, 58, 0.04));
-          border: 1px solid rgba(255, 228, 144, 0.18);
+          background: var(--sx-chip-bg);
+          border: 1px solid var(--sx-chip-border);
         }
 
         .chip.is-level-glow {
@@ -841,7 +982,7 @@
         }
 
         .chip-label {
-          color: rgba(255, 233, 184, 0.72);
+          color: var(--sx-muted-soft);
           font-size: 10px;
           letter-spacing: 0.14em;
           text-transform: uppercase;
@@ -856,7 +997,7 @@
         .chip-meta {
           display: block;
           margin-top: 4px;
-          color: rgba(255, 233, 184, 0.68);
+          color: var(--sx-muted-soft);
           font-size: 10px;
           line-height: 1.3;
         }
@@ -867,7 +1008,7 @@
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          color: rgba(255, 233, 184, 0.72);
+          color: var(--sx-muted-soft);
           font-size: 11px;
         }
 
@@ -875,7 +1016,7 @@
         .progress-rail {
           overflow: hidden;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--sx-track-bg);
         }
 
         .xp-bar {
@@ -916,9 +1057,9 @@
           min-width: 0;
           padding: 8px 10px;
           border-radius: 14px;
-          border: 1px solid rgba(255, 222, 132, 0.12);
-          background: rgba(255, 255, 255, 0.03);
-          color: rgba(255, 233, 184, 0.8);
+          border: 1px solid var(--sx-surface-border);
+          background: var(--sx-surface-bg);
+          color: var(--sx-muted-soft);
           font-size: 11px;
           display: inline-flex;
           align-items: center;
@@ -963,13 +1104,13 @@
         .goal-row {
           padding: 12px;
           border-radius: 18px;
-          border: 1px solid rgba(255, 222, 132, 0.12);
-          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--sx-surface-border);
+          background: var(--sx-surface-bg);
         }
 
         .summary-label,
         .goal-row small {
-          color: rgba(255, 233, 184, 0.72);
+          color: var(--sx-muted-soft);
         }
 
         .summary-label {
@@ -987,7 +1128,7 @@
         .summary-card p,
         .goal-row small {
           margin-top: 4px;
-          color: rgba(255, 233, 184, 0.72);
+          color: var(--sx-muted-soft);
         }
 
         .summary-card strong.icon-row {
@@ -1008,7 +1149,7 @@
           height: 8px;
           overflow: hidden;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--sx-track-bg);
         }
 
         .goal-fill {
@@ -1027,9 +1168,9 @@
         .footer-button {
           flex: 1;
           padding: 8px 12px;
-          border: 1px solid rgba(255, 224, 141, 0.18);
-          background: rgba(255, 255, 255, 0.04);
-          color: #fff1cf;
+          border: 1px solid var(--sx-ghost-border);
+          background: var(--sx-ghost-bg);
+          color: var(--sx-ghost-text);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -1038,14 +1179,14 @@
 
         .footer-button.primary {
           border: 0;
-          color: #221400;
+          color: var(--sx-solid-text);
           font-weight: 700;
           background: linear-gradient(90deg, #d5aa44, #ffe291);
         }
 
         .footnote {
           margin: 10px 2px 0;
-          color: rgba(255, 233, 184, 0.68);
+          color: var(--sx-muted-soft);
           font-size: 11px;
           line-height: 1.4;
         }
@@ -1128,6 +1269,7 @@
               <p class="site-title">${activeSite.label}</p>
             </div>
             <div class="header-actions">
+              <button id="toggleTheme" class="icon-button" type="button" aria-label="Toggle theme" title="${escapeHtml(themeMeta.title)}">${getInlineIcon(themeMeta.icon)}</button>
               <button id="openDashboard" class="icon-button" type="button" aria-label="Open dashboard" title="Open the full dashboard">${getInlineIcon("dashboard")}</button>
               <button id="closeWidget" class="icon-button" type="button" aria-label="Close widget" title="Close this widget">${getInlineIcon("close")}</button>
             </div>
@@ -1193,6 +1335,7 @@
     focusPanelRoot.getElementById("openDashboard").addEventListener("click", () => {
       openExtensionPage("OPEN_DASHBOARD_PAGE");
     });
+    focusPanelRoot.getElementById("toggleTheme").addEventListener("click", toggleWidgetTheme);
     if (widgetMode !== "summary") {
       focusPanelRoot.getElementById("openGoalsSettings").addEventListener("click", () => {
         openExtensionPage("OPEN_GOALS_PAGE");
@@ -1207,18 +1350,19 @@
 
   function renderFocusPanelError(error) {
     ensureFocusPanel();
+    const themeTokens = getWidgetThemeTokens();
 
     focusPanelRoot.innerHTML = `
       <style>
         .panel {
           width: 260px;
           padding: 14px;
-          color: #fff1cf;
+          color: ${themeTokens.text};
           font: 13px/1.45 "Trebuchet MS", "Gill Sans", sans-serif;
           border-radius: 20px;
-          border: 1px solid rgba(255, 214, 107, 0.18);
-          background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(8, 8, 8, 0.98));
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.42);
+          border: 1px solid ${themeTokens.panelBorder};
+          background: ${themeTokens.panelBg};
+          box-shadow: ${themeTokens.panelShadow};
         }
 
         .button {
@@ -1228,9 +1372,9 @@
           padding: 8px 12px;
           font: inherit;
           cursor: pointer;
-          border: 1px solid rgba(255, 224, 141, 0.18);
-          color: #fff1cf;
-          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid ${themeTokens.ghostBorder};
+          color: ${themeTokens.ghostText};
+          background: ${themeTokens.ghostBg};
         }
       </style>
       <div class="panel">
@@ -1276,6 +1420,30 @@
     widgetRefreshHoldUntil = 0;
     await loadWidgetPosition();
     return refreshFocusPanel();
+  }
+
+  async function toggleWidgetTheme() {
+    const nextPreference = getNextThemePreference();
+
+    try {
+      const response = await sendMessage({
+        type: "SAVE_SETTINGS",
+        payload: {
+          settings: {
+            themePreference: nextPreference
+          }
+        }
+      });
+
+      if (!response || !response.ok) {
+        throw new Error(response && response.error ? response.error : "Unable to save theme");
+      }
+
+      applyWidgetThemePreference(response.settings && response.settings.themePreference);
+      refreshFocusPanel();
+    } catch (error) {
+      return undefined;
+    }
   }
 
   function openExtensionPage(messageType) {
@@ -1532,6 +1700,7 @@
       return;
     }
 
+    const themeTokens = getWidgetThemeTokens();
     const panel = focusPanelRoot.querySelector(".panel");
 
     if (!panel) {
@@ -1556,8 +1725,8 @@
         position:absolute;
         inset:0;
         background:
-          radial-gradient(circle at 50% 12%, rgba(255, 236, 180, 0.24), transparent 34%),
-          radial-gradient(circle at 50% 68%, rgba(255, 197, 74, 0.14), transparent 46%);
+          radial-gradient(circle at 50% 12%, ${themeTokens.levelGlowTop}, transparent 34%),
+          radial-gradient(circle at 50% 68%, ${themeTokens.levelGlowBottom}, transparent 46%);
         opacity:0;
         animation:socialxp-level-glow 1800ms ease forwards;
       "></div>
@@ -1569,27 +1738,25 @@
         min-width:178px;
         padding:11px 14px;
         border-radius:18px;
-        border:1px solid rgba(255,224,141,0.28);
-        color:#fff1cf;
+        border:1px solid ${themeTokens.levelBannerBorder};
+        color:${themeTokens.text};
         text-align:center;
-        background:
-          radial-gradient(circle at top, rgba(255,239,191,0.22), transparent 56%),
-          linear-gradient(180deg, rgba(28,22,10,0.96), rgba(8,8,8,0.96));
-        box-shadow:0 20px 42px rgba(0,0,0,0.38), 0 0 24px rgba(255, 219, 121, 0.12);
+        background:${themeTokens.levelBannerBg};
+        box-shadow:${themeTokens.levelBannerShadow};
         animation:socialxp-level-banner 2200ms cubic-bezier(0.2,0.9,0.24,1) forwards;
       ">
-        <div style="color:#d5aa44;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;">Level Up</div>
+        <div style="color:${themeTokens.icon};font-size:9px;letter-spacing:0.22em;text-transform:uppercase;">Level Up</div>
         <div style="
           margin-top:4px;
           font-size:28px;
           font-weight:700;
           line-height:1;
           color:transparent;
-          background:linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%);
+          background:${themeTokens.textGradient};
           -webkit-background-clip:text;
           background-clip:text;
         ">Level ${escapeHtml(String(levelUp.toLevel))}</div>
-        <div style="margin-top:5px;color:rgba(255,241,207,0.74);font-size:11px;">${escapeHtml(String(levelUp.remainingXp))} XP to next level</div>
+        <div style="margin-top:5px;color:${themeTokens.toastMeta};font-size:11px;">${escapeHtml(String(levelUp.remainingXp))} XP to next level</div>
       </div>
       <div style="position:absolute;inset:0;">
         ${createWidgetConfettiPieces(40)}
@@ -1726,6 +1893,7 @@
   function showToast(event, dashboard) {
     ensureToastRoot();
 
+    const themeTokens = getWidgetThemeTokens();
     const wrapper = document.createElement("div");
     const totalXp = dashboard && dashboard.periods && dashboard.periods.daily ? dashboard.periods.daily.xp : event.xp;
     const dailyGoal = dashboard && dashboard.periods && dashboard.periods.daily ? dashboard.periods.daily.goal.xp : event.xp;
@@ -1737,12 +1905,10 @@
           width: 260px;
           padding: 14px 16px;
           border-radius: 18px;
-          color: #f8ecd2;
-          background:
-            linear-gradient(145deg, rgba(15, 15, 15, 0.98), rgba(29, 20, 8, 0.98)),
-            #101010;
-          border: 1px solid rgba(255, 208, 95, 0.28);
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.48);
+          color: ${themeTokens.text};
+          background: ${themeTokens.toastBg};
+          border: 1px solid ${themeTokens.toastBorder};
+          box-shadow: ${themeTokens.toastShadow};
           backdrop-filter: blur(14px);
           font: 13px/1.4 "Trebuchet MS", "Gill Sans", sans-serif;
           animation: slide-in 180ms ease-out, fade-out 260ms ease-in 3.4s forwards;
@@ -1750,7 +1916,7 @@
 
         .eyebrow {
           margin: 0 0 4px;
-          color: #d6b35a;
+          color: ${themeTokens.icon};
           font-size: 10px;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -1764,7 +1930,7 @@
 
         .sub {
           margin: 4px 0 10px;
-          color: rgba(248, 236, 210, 0.82);
+          color: ${themeTokens.toastSub};
         }
 
         .bar {
@@ -1788,7 +1954,7 @@
           margin-top: 8px;
           display: flex;
           justify-content: space-between;
-          color: rgba(248, 236, 210, 0.74);
+          color: ${themeTokens.toastMeta};
           font-size: 11px;
         }
 
@@ -1828,6 +1994,7 @@
   function showLevelUpToast(levelUp) {
     ensureToastRoot();
 
+    const themeTokens = getWidgetThemeTokens();
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <style>
@@ -1838,12 +2005,10 @@
           padding: 16px 16px 15px;
           overflow: hidden;
           border-radius: 22px;
-          color: #f8ecd2;
-          background:
-            radial-gradient(circle at top, rgba(255, 239, 191, 0.18), transparent 54%),
-            linear-gradient(145deg, rgba(18, 14, 7, 0.98), rgba(29, 20, 8, 0.98));
-          border: 1px solid rgba(255, 208, 95, 0.32);
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.48);
+          color: ${themeTokens.text};
+          background: ${themeTokens.toastBg};
+          border: 1px solid ${themeTokens.levelBannerBorder};
+          box-shadow: ${themeTokens.toastShadow};
           backdrop-filter: blur(14px);
           font: 13px/1.4 "Trebuchet MS", "Gill Sans", sans-serif;
           animation: level-slide-in 220ms ease-out, level-fade-out 260ms ease-in 3.5s forwards;
@@ -1853,13 +2018,13 @@
           content: "";
           position: absolute;
           inset: 0;
-          background: radial-gradient(circle at 50% 10%, rgba(255, 224, 141, 0.16), transparent 34%);
+          background: radial-gradient(circle at 50% 10%, ${themeTokens.levelGlowTop}, transparent 34%);
           pointer-events: none;
         }
 
         .eyebrow {
           margin: 0 0 4px;
-          color: #d6b35a;
+          color: ${themeTokens.icon};
           font-size: 10px;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -1871,19 +2036,19 @@
           font-weight: 700;
           line-height: 1;
           color: transparent;
-          background: linear-gradient(180deg, #fff7cb 0%, #ffe7a1 36%, #f0c865 72%, #b07618 100%);
+          background: ${themeTokens.textGradient};
           -webkit-background-clip: text;
           background-clip: text;
         }
 
         .sub {
           margin: 6px 0 0;
-          color: rgba(248, 236, 210, 0.82);
+          color: ${themeTokens.toastSub};
         }
 
         .meta {
           margin-top: 10px;
-          color: rgba(248, 236, 210, 0.74);
+          color: ${themeTokens.toastMeta};
           font-size: 11px;
         }
 
@@ -2113,6 +2278,17 @@
         <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
           <path d="M6 3v18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
           <path d="M7 4h9l-1.4 3L16 10H7V4Z" fill="currentColor"></path>
+        </svg>
+      `,
+      sun: `
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+          <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.8"></circle>
+          <path d="M12 2.8V5.2M12 18.8V21.2M21.2 12H18.8M5.2 12H2.8M18.5 5.5L16.8 7.2M7.2 16.8L5.5 18.5M18.5 18.5L16.8 16.8M7.2 7.2L5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
+      `,
+      moon: `
+        <svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+          <path d="M19.2 14.1A7.5 7.5 0 1 1 9.9 4.8A6.6 6.6 0 0 0 19.2 14.1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
         </svg>
       `
     };

@@ -11,10 +11,14 @@ const XP_VALUES = {
   post: 20,
   reply: 8
 };
+const THEME_MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
+let themePreference = "system";
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindEvents();
   prepareMotion();
+  applyThemePreference("system");
+  THEME_MEDIA.addEventListener("change", handleThemeMediaChange);
 
   try {
     const response = await sendMessage({ type: "GET_DASHBOARD_DATA" });
@@ -23,6 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       throw new Error(response && response.error ? response.error : "Unable to load Social-XP settings");
     }
 
+    applyThemePreference(response.settings && response.settings.themePreference);
     hydrateGoalInputs(response.dashboard.goals);
     updateXpTargets();
     setStatus("");
@@ -35,15 +40,25 @@ function bindEvents() {
   document.getElementById("goalsForm").addEventListener("submit", handleSave);
   document.getElementById("resetData").addEventListener("click", handleReset);
   document.getElementById("openDashboard").addEventListener("click", openDashboardPage);
+  document.getElementById("toggleTheme").addEventListener("click", handleThemeToggle);
   document.getElementById("openXpGuide").addEventListener("click", openXpGuide);
   document.getElementById("closeXpGuide").addEventListener("click", closeXpGuide);
   document.getElementById("xpGuideModal").addEventListener("click", handleModalClick);
   document.addEventListener("keydown", handleKeydown);
+  chrome.storage.onChanged.addListener(handleStorageChange);
 
   PERIODS.forEach((period) => {
     getInput(period, "post").addEventListener("input", () => syncLinkedGoals(period, "post"));
     getInput(period, "reply").addEventListener("input", () => syncLinkedGoals(period, "reply"));
   });
+}
+
+function handleStorageChange(changes, areaName) {
+  if (areaName !== "local" || !changes.socialXpSettings) {
+    return;
+  }
+
+  applyThemePreference(changes.socialXpSettings.newValue && changes.socialXpSettings.newValue.themePreference);
 }
 
 async function handleSave(event) {
@@ -157,6 +172,79 @@ function handleKeydown(event) {
   }
 }
 
+function handleThemeMediaChange() {
+  if (themePreference === "system") {
+    applyThemePreference("system");
+  }
+}
+
+async function handleThemeToggle() {
+  const nextPreference = getNextThemePreference(themePreference, getSystemTheme());
+
+  try {
+    const response = await sendMessage({
+      type: "SAVE_SETTINGS",
+      payload: {
+        settings: {
+          themePreference: nextPreference
+        }
+      }
+    });
+
+    if (!response || !response.ok) {
+      throw new Error(response && response.error ? response.error : "Unable to save theme");
+    }
+
+    applyThemePreference(response.settings && response.settings.themePreference);
+  } catch (error) {
+    applyThemePreference(themePreference);
+  }
+}
+
+function applyThemePreference(nextPreference) {
+  themePreference = sanitizeThemePreference(nextPreference);
+  const effectiveTheme = resolveEffectiveTheme(themePreference);
+
+  document.body.dataset.theme = effectiveTheme;
+  document.documentElement.style.colorScheme = effectiveTheme;
+  renderThemeToggle();
+}
+
+function renderThemeToggle() {
+  const button = document.getElementById("toggleTheme");
+  const icon = document.getElementById("themeToggleIcon");
+  const label = document.getElementById("themeToggleLabel");
+  const effectiveTheme = resolveEffectiveTheme(themePreference);
+  const systemTheme = getSystemTheme();
+
+  if (!button || !icon || !label) {
+    return;
+  }
+
+  icon.innerHTML = effectiveTheme === "light" ? getThemeIcon("sun") : getThemeIcon("moon");
+  label.textContent = `${themePreference === "system" ? "Auto" : "Manual"} ${capitalize(effectiveTheme)}`;
+  button.title = themePreference === "system"
+    ? `Following your system ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`
+    : `Using ${effectiveTheme} mode. Click to return to system ${systemTheme} mode.`;
+}
+
+function getNextThemePreference(currentPreference, systemTheme) {
+  return currentPreference === "system" ? (systemTheme === "dark" ? "light" : "dark") : "system";
+}
+
+function getSystemTheme() {
+  return THEME_MEDIA.matches ? "dark" : "light";
+}
+
+function resolveEffectiveTheme(preference) {
+  const normalized = sanitizeThemePreference(preference);
+  return normalized === "system" ? getSystemTheme() : normalized;
+}
+
+function sanitizeThemePreference(value) {
+  return value === "light" || value === "dark" ? value : "system";
+}
+
 function prepareMotion() {
   document.querySelectorAll(".site-card").forEach((card, index) => {
     card.style.setProperty("--site-index", String(index));
@@ -236,4 +324,21 @@ function sendMessage(message) {
       resolve(response);
     });
   });
+}
+
+function getThemeIcon(type) {
+  if (type === "sun") {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+        <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.8"></circle>
+        <path d="M12 2.8V5.2M12 18.8V21.2M21.2 12H18.8M5.2 12H2.8M18.5 5.5L16.8 7.2M7.2 16.8L5.5 18.5M18.5 18.5L16.8 16.8M7.2 7.2L5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+      <path d="M19.2 14.1A7.5 7.5 0 1 1 9.9 4.8A6.6 6.6 0 0 0 19.2 14.1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+    </svg>
+  `;
 }
