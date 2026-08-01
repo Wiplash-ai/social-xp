@@ -45,6 +45,19 @@
   --button-solid-text: #241600;
 }
 
+html.socialxp-internal-navigation .topbar,
+html.socialxp-internal-navigation .sidebar-left .panel,
+html.socialxp-internal-navigation .form-panel,
+html.socialxp-internal-navigation .sidebar-right .hero-card,
+html.socialxp-internal-navigation .site-card,
+html.socialxp-internal-navigation .goal-grid,
+html.socialxp-internal-navigation .hero-chip {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+html.socialxp-light-theme,
 body[data-theme="light"] {
   color-scheme: light;
   --panel-border: rgba(193, 149, 49, 0.22);
@@ -97,6 +110,14 @@ body {
   min-height: 100vh;
 }
 
+html {
+  background: #040404;
+}
+
+html.socialxp-light-theme {
+  background: #fffdf7;
+}
+
 body {
   position: relative;
   overflow: hidden;
@@ -146,8 +167,33 @@ body::after {
   margin: 0 auto;
   padding: 16px 0 18px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
+}
+
+.product-footer {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.product-footer a {
+  color: var(--gold-soft);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.product-footer a:hover {
+  color: var(--text);
+}
+
+.product-footer-separator {
+  color: var(--border-strong);
+  margin: 0 2px;
 }
 
 .topbar,

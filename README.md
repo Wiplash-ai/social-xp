@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Manifest V3 • Chrome / Edge • Firefox build included
+  Manifest V3 | Chrome, Edge, Firefox, and Opera-ready builds
 </p>
 
 Social-XP tracks your publishing activity across major social platforms and turns it into a progression system. It watches for new posts and replies in supported social UIs, keeps a compact widget on the page you are currently using, and gives you a dashboard for trends, goals, and level progression.
@@ -32,7 +32,7 @@ Social-XP tracks your publishing activity across major social platforms and turn
 - Gamified XP system with goal bonuses, streak bonuses, and overgoal rewards
 - DOM-based tracking for posts and replies/comments
 - Local-only storage with no backend dependency
-- Firefox build output in `dist/firefox`
+- Store-ready Chromium and Firefox build outputs in `dist/`
 
 ## XP System
 
@@ -95,8 +95,19 @@ Install and validate locally with:
 
 ```bash
 npm test
+npm run build:chrome
 npm run build:firefox
 ```
+
+### Recording Demos
+
+Open a deterministic social-site fixture with the real unpacked extension and populated widget:
+
+```bash
+npm run demo:stores -- x
+```
+
+Available fixtures are `x`, `linkedin`, `threads`, `discord`, `reddit`, `facebook`, and `bluesky`. The source pages and local image assets live in `store-assets/fixtures/`. Close the launched Chromium window when recording is complete.
 
 Project layout:
 
@@ -105,11 +116,13 @@ Project layout:
 - `options/`: goal management and XP guide
 - `background.js`: storage, XP economy, rewards, and level progression
 - `tests/`: Node unit tests for reward and leveling logic
+- `store-assets/fixtures/`: independent social-site demo pages used for screenshots and recordings
 
 ## Notes
 
 - Tracking is heuristic-driven and based on DOM structure, so social site UI changes may require selector updates.
 - The extension uses `chrome.storage.local`; there is no backend.
+- Social-XP does not transmit browsing history, post content, or activity data off-device.
 - Discord tracking focuses on message sends and reply composer state.
 - Firefox uses a generated build in `dist/firefox` that swaps the background manifest format.
 

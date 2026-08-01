@@ -93,7 +93,6 @@
   ];
 
   const activeSite = getActiveSite();
-  const THEME_MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
   const queuedFingerprints = new Map();
   let toastRoot = null;
   let focusPanelHost = null;
@@ -107,7 +106,7 @@
   let widgetPosition = null;
   let widgetPositionLoaded = false;
   let widgetDragState = null;
-  let widgetThemePreference = "system";
+  let widgetThemePreference = "dark";
 
   if (!activeSite) {
     return;
@@ -119,7 +118,6 @@
     document.addEventListener("click", handleClick, true);
     document.addEventListener("submit", handleSubmit, true);
     window.addEventListener("resize", handleWindowResize);
-    THEME_MEDIA.addEventListener("change", handleThemeMediaChange);
 
     if (activeSite.enableEnterTracking) {
       document.addEventListener("keydown", handleKeydown, true);
@@ -223,16 +221,6 @@
 
     widgetPosition = clampWidgetPosition(widgetPosition);
     applyWidgetPosition();
-  }
-
-  function handleThemeMediaChange() {
-    if (widgetThemePreference === "system") {
-      applyWidgetThemePreference("system");
-
-      if (widgetVisible) {
-        refreshFocusPanel();
-      }
-    }
   }
 
   function handleRuntimeMessage(message, sender, sendResponse) {
@@ -565,7 +553,18 @@
 
   function buildFingerprint(intent) {
     const content = normalizeText(intent.content).slice(0, 120);
-    return `${activeSite.id}:${intent.activityType}:${content}`;
+    return `${activeSite.id}:${intent.activityType}:${hashFingerprint(content)}`;
+  }
+
+  function hashFingerprint(value) {
+    let hash = 2166136261;
+
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return (hash >>> 0).toString(36);
   }
 
   function isWithinCooldown(fingerprint) {
@@ -637,32 +636,25 @@
     widgetThemePreference = sanitizeThemePreference(nextPreference);
   }
 
-  function getSystemTheme() {
-    return THEME_MEDIA.matches ? "dark" : "light";
-  }
-
   function getEffectiveWidgetTheme() {
-    return widgetThemePreference === "system" ? getSystemTheme() : widgetThemePreference;
+    return widgetThemePreference;
   }
 
   function sanitizeThemePreference(value) {
-    return value === "light" || value === "dark" ? value : "system";
+    return value === "light" ? "light" : "dark";
   }
 
   function getNextThemePreference() {
-    return widgetThemePreference === "system" ? (getSystemTheme() === "dark" ? "light" : "dark") : "system";
+    return widgetThemePreference === "light" ? "dark" : "light";
   }
 
   function getThemeToggleMeta() {
     const effectiveTheme = getEffectiveWidgetTheme();
-    const systemTheme = getSystemTheme();
 
     return {
       effectiveTheme,
       icon: effectiveTheme === "light" ? "sun" : "moon",
-      title: widgetThemePreference === "system"
-        ? `Following your system ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`
-        : `Using ${effectiveTheme} mode. Click to return to system ${systemTheme} mode.`
+      title: `Using ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`
     };
   }
 
@@ -1199,6 +1191,24 @@
           width: 100%;
         }
 
+        .product-credit {
+          margin: 9px 0 1px;
+          color: var(--sx-muted);
+          font-size: 11px;
+          line-height: 1.2;
+          text-align: center;
+        }
+
+        .product-credit a {
+          color: var(--sx-text);
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .product-credit a:hover {
+          color: var(--sx-text);
+        }
+
         @keyframes shimmer {
           from { background-position: 0% 50%; }
           to { background-position: 220% 50%; }
@@ -1328,6 +1338,7 @@
           <div class="footer">
             <button id="toggleView" class="footer-button primary" type="button" aria-label="${widgetMode === "summary" ? "View goal progress" : "Return to today view"}" title="${widgetMode === "summary" ? "View daily, weekly, monthly, and yearly goals" : "Return to today's progress"}">${widgetMode === "summary" ? `${getInlineIcon("target")} Goals` : `${getInlineIcon("spark")} Today`}</button>
           </div>
+          <p class="product-credit">Produced by <a href="https://wiplash.ai/" target="_blank" rel="noreferrer">Wiplash.ai</a></p>
         </div>
       </div>
     `;

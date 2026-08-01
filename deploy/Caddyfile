@@ -1,0 +1,20 @@
+labs.wiplash.ai {
+  encode zstd gzip
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "SAMEORIGIN"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  }
+
+  @root path /
+  redir @root /social-xp/ 302
+
+  @social_xp_no_slash path /social-xp
+  redir @social_xp_no_slash /social-xp/ 308
+
+  root * /srv/labs
+  file_server
+}

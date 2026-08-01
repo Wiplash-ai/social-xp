@@ -11,14 +11,12 @@ const XP_VALUES = {
   post: 20,
   reply: 8
 };
-const THEME_MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
-let themePreference = "system";
+let themePreference = readPersistedThemePreference();
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindEvents();
   prepareMotion();
-  applyThemePreference("system");
-  THEME_MEDIA.addEventListener("change", handleThemeMediaChange);
+  applyThemePreference(themePreference);
 
   try {
     const response = await sendMessage({ type: "GET_DASHBOARD_DATA" });
@@ -34,6 +32,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (error) {
     setStatus(error && error.message ? error.message : "Unable to load");
   }
+
+  chrome.storage.onChanged.addListener(handleStorageChange);
 });
 
 function bindEvents() {
@@ -45,8 +45,6 @@ function bindEvents() {
   document.getElementById("closeXpGuide").addEventListener("click", closeXpGuide);
   document.getElementById("xpGuideModal").addEventListener("click", handleModalClick);
   document.addEventListener("keydown", handleKeydown);
-  chrome.storage.onChanged.addListener(handleStorageChange);
-
   PERIODS.forEach((period) => {
     getInput(period, "post").addEventListener("input", () => syncLinkedGoals(period, "post"));
     getInput(period, "reply").addEventListener("input", () => syncLinkedGoals(period, "reply"));
@@ -145,6 +143,7 @@ function syncLinkedGoals(sourcePeriod, type) {
 }
 
 function openDashboardPage() {
+  window.SocialXpPageNavigation?.markInternal();
   window.location.href = chrome.runtime.getURL("dashboard/dashboard.html");
 }
 
@@ -172,14 +171,8 @@ function handleKeydown(event) {
   }
 }
 
-function handleThemeMediaChange() {
-  if (themePreference === "system") {
-    applyThemePreference("system");
-  }
-}
-
 async function handleThemeToggle() {
-  const nextPreference = getNextThemePreference(themePreference, getSystemTheme());
+  const nextPreference = getNextThemePreference(themePreference);
 
   try {
     const response = await sendMessage({
@@ -206,7 +199,9 @@ function applyThemePreference(nextPreference) {
   const effectiveTheme = resolveEffectiveTheme(themePreference);
 
   document.body.dataset.theme = effectiveTheme;
+  document.documentElement.classList.toggle("socialxp-light-theme", effectiveTheme === "light");
   document.documentElement.style.colorScheme = effectiveTheme;
+  persistThemePreference(effectiveTheme);
   renderThemeToggle();
 }
 
@@ -215,34 +210,42 @@ function renderThemeToggle() {
   const icon = document.getElementById("themeToggleIcon");
   const label = document.getElementById("themeToggleLabel");
   const effectiveTheme = resolveEffectiveTheme(themePreference);
-  const systemTheme = getSystemTheme();
 
   if (!button || !icon || !label) {
     return;
   }
 
   icon.innerHTML = effectiveTheme === "light" ? getThemeIcon("sun") : getThemeIcon("moon");
-  label.textContent = `${themePreference === "system" ? "Auto" : "Manual"} ${capitalize(effectiveTheme)}`;
-  button.title = themePreference === "system"
-    ? `Following your system ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`
-    : `Using ${effectiveTheme} mode. Click to return to system ${systemTheme} mode.`;
+  label.textContent = `${capitalize(effectiveTheme)} mode`;
+  button.title = `Using ${effectiveTheme} mode. Click to use ${effectiveTheme === "dark" ? "light" : "dark"} mode.`;
 }
 
-function getNextThemePreference(currentPreference, systemTheme) {
-  return currentPreference === "system" ? (systemTheme === "dark" ? "light" : "dark") : "system";
-}
-
-function getSystemTheme() {
-  return THEME_MEDIA.matches ? "dark" : "light";
+function getNextThemePreference(currentPreference) {
+  return currentPreference === "light" ? "dark" : "light";
 }
 
 function resolveEffectiveTheme(preference) {
-  const normalized = sanitizeThemePreference(preference);
-  return normalized === "system" ? getSystemTheme() : normalized;
+  return sanitizeThemePreference(preference);
 }
 
 function sanitizeThemePreference(value) {
-  return value === "light" || value === "dark" ? value : "system";
+  return value === "light" ? "light" : "dark";
+}
+
+function persistThemePreference(preference) {
+  try {
+    window.localStorage.setItem("socialXpThemePreference", preference);
+  } catch {
+    // Theme still applies when local storage is unavailable.
+  }
+}
+
+function readPersistedThemePreference() {
+  try {
+    return window.localStorage.getItem("socialXpThemePreference") === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
 }
 
 function prepareMotion() {

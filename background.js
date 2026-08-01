@@ -52,7 +52,7 @@ const LEGACY_DEFAULT_GOALS = Object.freeze({
 
 const DEFAULT_SETTINGS = Object.freeze({
   toastEnabled: true,
-  themePreference: "system"
+  themePreference: "dark"
 });
 const SITE_LABELS = Object.freeze({
   x: "X",
@@ -179,6 +179,7 @@ async function ensureInitialized() {
   if (
     !stored[STORAGE_KEYS.settings] ||
     typeof stored[STORAGE_KEYS.settings] !== "object" ||
+    !["dark", "light"].includes(stored[STORAGE_KEYS.settings].themePreference) ||
     !settingsEqual(stored[STORAGE_KEYS.settings], sanitizedSettings)
   ) {
     next[STORAGE_KEYS.settings] = sanitizedSettings;
@@ -1356,7 +1357,7 @@ function normalizeSupportedSite(value) {
 }
 
 function sanitizeThemePreference(value) {
-  return value === "light" || value === "dark" ? value : "system";
+  return value === "light" ? "light" : "dark";
 }
 
 function sanitizeContextLabel(value) {

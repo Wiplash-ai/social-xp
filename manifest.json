@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Social-XP",
-  "version": "0.1.0",
-  "description": "Track your posting and reply cadence across major social platforms with XP-style progress.",
+  "name": "Social Posting Streak Tracker - Social-XP",
+  "short_name": "Social-XP",
+  "version": "1.0.0",
+  "description": "Build consistent social posting habits with private, local-only goals, streaks, XP, and progress tracking.",
+  "homepage_url": "https://labs.wiplash.ai/social-xp/",
   "icons": {
     "16": "assets/icons/icon16.png",
     "32": "assets/icons/icon32.png",

@@ -8,12 +8,13 @@ const projectRoot = path.resolve(__dirname, "..");
 const outputRoot = path.join(projectRoot, "dist", "firefox");
 
 const FILES_TO_COPY = [
-  "assets",
+  "assets/brand-mark.png",
+  "assets/icons",
+  "assets/page-bootstrap.js",
   "background.js",
   "content",
   "dashboard",
-  "options",
-  "README.md"
+  "options"
 ];
 
 const FIREFOX_EXTENSION_ID = "{f1144441-2d88-4daf-9e17-bf5c69a2e111}";
@@ -33,7 +34,7 @@ async function buildFirefoxExtension() {
     browser_specific_settings: {
       gecko: {
         id: FIREFOX_EXTENSION_ID,
-        strict_min_version: "121.0",
+        strict_min_version: "140.0",
         data_collection_permissions: {
           required: ["none"]
         }
