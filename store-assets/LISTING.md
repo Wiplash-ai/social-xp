@@ -64,3 +64,8 @@ No test account or backend is required. Reviewers may use their own account on a
 ## Screenshots
 
 The store package includes 1280 x 800 captures of the real extension running in deterministic, independently designed mock environments for X, LinkedIn, Threads, Discord, Reddit, Facebook, and Bluesky. The mock pages avoid publishing private account content while showing the same extension widget reviewers receive.
+
+## Demo Video
+
+- YouTube: `https://youtu.be/QN5LTH5X0vU`
+- Thumbnail: `store-assets/social-xp-youtube-thumbnail.png`
