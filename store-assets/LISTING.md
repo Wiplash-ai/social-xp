@@ -4,6 +4,8 @@
 
 Social Posting Streak Tracker - Social-XP
 
+Firefox listing name: Social-XP: Posting Streaks
+
 ## Short Description
 
 Build consistent social posting habits with private, local-only goals, streaks, XP, and progress tracking.
