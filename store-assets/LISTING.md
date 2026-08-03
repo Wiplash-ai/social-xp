@@ -14,7 +14,7 @@ Build consistent social posting habits with private, local-only goals, streaks, 
 
 Social-XP turns social publishing into a progression system you can understand at a glance.
 
-Track posts and replies across X, LinkedIn, Threads, Discord, Reddit, Facebook, and Bluesky. The compact on-page widget shows today's XP, streak, level, and remaining goal. The dashboard adds activity trends, network breakdowns, and goal progress without sending your activity to a server.
+Build a consistent publishing habit across the social sites you already use. The compact on-page widget shows today's XP, streak, level, and remaining goal. The dashboard adds activity trends, network breakdowns, and goal progress without sending your activity to a server.
 
 Features:
 
