@@ -2,13 +2,23 @@
 
 ## Name
 
-Social Posting Streak Tracker - Social-XP
+Social Media Post Tracker - Social-XP
 
-Firefox listing name: Social-XP: Posting Streaks
+Firefox listing name: Social Media Post Tracker - Social-XP
 
 ## Short Description
 
-Build consistent social posting habits with private, local-only goals, streaks, XP, and progress tracking.
+Track posts and replies across seven social platforms with private local goals, streaks, XP, levels, and progress dashboards.
+
+## Search terms
+
+- `social media tracker`
+- `post tracker`
+- `posting streak`
+- `social media goals`
+- `content creator habits`
+- `social media XP`
+- `reply tracker`
 
 ## Long Description
 
