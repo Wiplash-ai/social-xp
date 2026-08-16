@@ -1,2 +1,309 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><style>*{box-sizing:border-box}body{margin:0;padding:20px;display:grid;gap:20px;background:#ddd;font-family:Arial,sans-serif}.promo{position:relative;overflow:hidden;color:#fff7df;background:#090909}.promo::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(255,226,145,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,226,145,.055) 1px,transparent 1px);background-size:38px 38px}.promo::after{content:"";position:absolute;inset:auto 0 0;height:42%;background:linear-gradient(180deg,transparent,rgba(213,170,68,.13))}.small{width:440px;height:280px}.marquee{width:1400px;height:560px}.lockup{position:absolute;z-index:2;display:flex;align-items:center}.small .lockup{inset:28px}.marquee .lockup{left:86px;top:72px}.lockup img{border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.4)}.small .lockup img{width:72px;height:72px}.marquee .lockup img{width:128px;height:128px}.wordmark{margin-left:22px}.wordmark strong{display:block;font-size:52px;line-height:1}.small .wordmark strong{font-size:32px}.wordmark span{display:block;margin-top:8px;color:#e4b84e;font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.small .wordmark span{font-size:10px}.chart{position:absolute;z-index:1;right:5%;bottom:7%;width:56%;height:66%}.small .chart{right:4%;bottom:3%;width:74%;height:52%;opacity:.68}.rail{position:absolute;left:0;right:0;height:1px;background:rgba(255,231,151,.12)}.rail:nth-child(1){top:15%}.rail:nth-child(2){top:44%}.rail:nth-child(3){top:73%}.line{position:absolute;left:3%;right:2%;bottom:9%;height:74%;clip-path:polygon(0 90%,16% 72%,32% 78%,50% 47%,66% 54%,82% 18%,100% 0,100% 12%,82% 28%,66% 65%,50% 59%,32% 91%,16% 84%,0 100%);background:linear-gradient(90deg,#9a6716,#e4b84e,#ffe797)}.bars{position:absolute;z-index:2;left:6%;right:6%;bottom:9%;height:62%;display:flex;align-items:flex-end;gap:3%}.bar{width:8%;border:1px solid rgba(255,231,151,.42);background:linear-gradient(180deg,rgba(255,231,151,.38),rgba(196,138,24,.14))}.bar:nth-child(1){height:20%}.bar:nth-child(2){height:33%}.bar:nth-child(3){height:29%}.bar:nth-child(4){height:52%}.bar:nth-child(5){height:64%}.bar:nth-child(6){height:78%}.bar:nth-child(7){height:96%}</style></head><body><section class="promo small"><div class="lockup"><img src="../../assets/brand-mark.png" alt=""><div class="wordmark"><strong>Social-XP</strong><span>Build the streak</span></div></div><div class="chart"><i class="rail"></i><i class="rail"></i><i class="rail"></i><div class="line"></div><div class="bars"><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i></div></div></section><section class="promo marquee"><div class="lockup"><img src="../../assets/brand-mark.png" alt=""><div class="wordmark"><strong>Social-XP</strong><span>Turn consistency into progress</span></div></div><div class="chart"><i class="rail"></i><i class="rail"></i><i class="rail"></i><div class="line"></div><div class="bars"><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i></div></div></section></body></html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      :root {
+        --ink: #070706;
+        --panel: rgba(18, 16, 12, 0.78);
+        --cream: #fff6dc;
+        --muted: #d7c9a5;
+        --gold: #f1be42;
+        --gold-bright: #ffe596;
+        --line: rgba(255, 218, 112, 0.28);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        padding: 20px;
+        display: grid;
+        gap: 20px;
+        background: #ddd;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .promo {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        color: var(--cream);
+        background:
+          linear-gradient(90deg, rgba(7, 7, 6, 0.99) 0%, rgba(7, 7, 6, 0.91) 39%, rgba(7, 7, 6, 0.18) 100%),
+          url("../../assets/promo-momentum-bg.png") center / cover no-repeat,
+          var(--ink);
+      }
+
+      .promo::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        inset: 0;
+        background:
+          radial-gradient(circle at 58% 120%, rgba(241, 190, 66, 0.18), transparent 42%),
+          linear-gradient(rgba(255, 229, 150, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 229, 150, 0.04) 1px, transparent 1px);
+        background-size: auto, 40px 40px, 40px 40px;
+      }
+
+      .promo::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+        border: 1px solid rgba(255, 218, 112, 0.16);
+      }
+
+      .small { width: 440px; height: 280px; }
+      .marquee { width: 1400px; height: 560px; }
+
+      .brand {
+        position: absolute;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+      }
+
+      .brand img {
+        display: block;
+        border-radius: 14px;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.48), 0 0 28px rgba(241, 190, 66, 0.12);
+      }
+
+      .brand-copy { margin-left: 14px; }
+
+      .kicker {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--gold);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .brand strong {
+        display: block;
+        font-size: 27px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .headline {
+        position: absolute;
+        z-index: 2;
+        margin: 0;
+        max-width: 58%;
+        font-size: 35px;
+        line-height: 0.96;
+        letter-spacing: -0.055em;
+      }
+
+      .headline em {
+        color: var(--gold-bright);
+        font-style: normal;
+      }
+
+      .promise {
+        position: absolute;
+        z-index: 2;
+        margin: 0;
+        color: var(--muted);
+        font-weight: 650;
+      }
+
+      .xp-card {
+        position: absolute;
+        z-index: 3;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: linear-gradient(145deg, rgba(31, 27, 19, 0.9), rgba(8, 8, 7, 0.82));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 241, 190, 0.08);
+        backdrop-filter: blur(10px);
+      }
+
+      .xp-card::before {
+        content: "";
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        right: -50px;
+        top: -62px;
+        border-radius: 50%;
+        background: rgba(241, 190, 66, 0.2);
+        filter: blur(24px);
+      }
+
+      .card-label {
+        display: block;
+        color: var(--gold);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .xp-total {
+        display: block;
+        margin-top: 5px;
+        color: var(--cream);
+        font-size: 31px;
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+
+      .xp-total span {
+        color: var(--gold-bright);
+      }
+
+      .progress {
+        height: 5px;
+        margin-top: 10px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+      }
+
+      .progress i {
+        display: block;
+        width: 72%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #b87512, var(--gold-bright));
+        box-shadow: 0 0 14px rgba(241, 190, 66, 0.65);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 13px;
+        border-top: 1px solid rgba(255, 229, 150, 0.12);
+      }
+
+      .stat { padding-top: 10px; }
+
+      .stat + .stat {
+        padding-left: 11px;
+        border-left: 1px solid rgba(255, 229, 150, 0.12);
+      }
+
+      .stat b {
+        display: block;
+        color: var(--cream);
+        font-size: 17px;
+        line-height: 1;
+      }
+
+      .stat small {
+        display: block;
+        margin-top: 4px;
+        color: #ae9f7a;
+        font-size: 7px;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+
+      .network-row {
+        position: absolute;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .network-row span {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 1px solid rgba(255, 229, 150, 0.18);
+        border-radius: 9px;
+        color: var(--cream);
+        background: rgba(15, 14, 11, 0.72);
+        font-size: 9px;
+        font-weight: 850;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+      }
+
+      .network-row b {
+        margin-left: 5px;
+        color: var(--gold-bright);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .small .brand { left: 24px; top: 22px; }
+      .small .brand img { width: 48px; height: 48px; }
+      .small .headline { left: 24px; top: 94px; }
+      .small .promise { left: 25px; bottom: 26px; font-size: 11px; }
+      .small .xp-card { right: 20px; top: 76px; width: 166px; padding: 15px; border-radius: 18px; }
+      .small .network-row { display: none; }
+
+      .marquee .brand { left: 72px; top: 58px; }
+      .marquee .brand img { width: 78px; height: 78px; border-radius: 20px; }
+      .marquee .brand-copy { margin-left: 20px; }
+      .marquee .kicker { font-size: 13px; margin-bottom: 7px; }
+      .marquee .brand strong { font-size: 44px; }
+      .marquee .headline { left: 72px; top: 184px; max-width: 590px; font-size: 69px; line-height: 0.94; }
+      .marquee .promise { left: 76px; top: 345px; max-width: 510px; font-size: 19px; line-height: 1.45; }
+      .marquee .xp-card { right: 86px; top: 104px; width: 420px; padding: 30px; border-radius: 28px; }
+      .marquee .card-label { font-size: 12px; }
+      .marquee .xp-total { margin-top: 10px; font-size: 58px; }
+      .marquee .progress { height: 8px; margin-top: 19px; }
+      .marquee .stats { margin-top: 24px; }
+      .marquee .stat { padding-top: 18px; }
+      .marquee .stat + .stat { padding-left: 20px; }
+      .marquee .stat b { font-size: 26px; }
+      .marquee .stat small { margin-top: 7px; font-size: 9px; }
+      .marquee .network-row { left: 76px; bottom: 55px; }
+      .marquee .network-row span { width: 38px; height: 38px; border-radius: 11px; font-size: 11px; }
+      .marquee .network-row b { font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <section class="promo small">
+      <div class="brand">
+        <img src="../../assets/brand-mark.png" alt="">
+        <div class="brand-copy"><span class="kicker">Social momentum</span><strong>Social-XP</strong></div>
+      </div>
+      <h1 class="headline">Post. Reply.<br><em>Level up.</em></h1>
+      <p class="promise">Goals, streaks &amp; XP · private by design</p>
+      <div class="xp-card">
+        <span class="card-label">Weekly focus</span>
+        <strong class="xp-total">516 <span>XP</span></strong>
+        <div class="progress"><i></i></div>
+        <div class="stats">
+          <div class="stat"><b>6d</b><small>Streak</small></div>
+          <div class="stat"><b>13</b><small>Posts</small></div>
+          <div class="stat"><b>32</b><small>Replies</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="promo marquee">
+      <div class="brand">
+        <img src="../../assets/brand-mark.png" alt="">
+        <div class="brand-copy"><span class="kicker">Social media momentum</span><strong>Social-XP</strong></div>
+      </div>
+      <h1 class="headline">Turn consistency<br>into <em>progress.</em></h1>
+      <p class="promise">Track posts and replies across your social networks with local goals, streaks, levels, and XP.</p>
+      <div class="network-row">
+        <span>X</span><span>in</span><span>Th</span><span>Dc</span><span>R</span><span>Fb</span><span>Bs</span><b>7 networks</b>
+      </div>
+      <div class="xp-card">
+        <span class="card-label">Weekly focus</span>
+        <strong class="xp-total">516 <span>XP</span></strong>
+        <div class="progress"><i></i></div>
+        <div class="stats">
+          <div class="stat"><b>6d</b><small>Streak</small></div>
+          <div class="stat"><b>13</b><small>Posts</small></div>
+          <div class="stat"><b>32</b><small>Replies</small></div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>
